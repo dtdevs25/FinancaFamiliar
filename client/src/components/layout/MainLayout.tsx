@@ -20,6 +20,30 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useState } from "react";
+import { queryClient } from "@/lib/queryClient";
+import {
+  Home,
+  Receipt,
+  BarChart3,
+  Calendar,
+  Bell,
+  ChevronDown,
+  UserPen,
+  Settings,
+  LogOut,
+  PieChart,
+  Users,
+  Eye
+} from "lucide-react";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -27,7 +51,15 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [location, setLocation] = useLocation();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const userId = "default-user-id";
+
+  const markNotificationAsRead = async (notificationId: string) => {
+    // TODO: Implement API call to mark notification as read
+    console.log('Marking notification as read:', notificationId);
+    // Invalidate and refetch notifications
+    queryClient.invalidateQueries({ queryKey: ["/api/notifications", userId] });
+  };
 
   const { data: notifications } = useQuery({
     queryKey: ["/api/notifications", userId],
@@ -40,25 +72,25 @@ export default function MainLayout({ children }: MainLayoutProps) {
     {
       title: "Dashboard",
       url: "/",
-      icon: "fas fa-home",
+      icon: Home,
       isActive: location === "/" || location === "/dashboard"
     },
     {
       title: "Contas",
       url: "/contas",
-      icon: "fas fa-receipt",
+      icon: Receipt,
       isActive: location === "/contas"
     },
     {
       title: "Relatórios",
       url: "/relatorios",
-      icon: "fas fa-chart-line",
+      icon: BarChart3,
       isActive: location === "/relatorios"
     },
     {
       title: "Calendário",
       url: "/calendario",
-      icon: "fas fa-calendar",
+      icon: Calendar,
       isActive: location === "/calendario"
     }
   ];
@@ -68,11 +100,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center space-x-2 px-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <i className="fas fa-wallet text-white text-sm"></i>
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
+              <PieChart className="text-white" size={20} />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-lg font-semibold text-foreground">FinanFamily</h1>
+              <div className="flex items-center gap-1">
+                <Users className="text-primary" size={16} />
+                <h1 className="text-lg font-semibold text-foreground">FinanFamily</h1>
+              </div>
               <p className="text-xs text-muted-foreground">Gestão Financeira</p>
             </div>
           </div>
@@ -92,7 +127,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                           isActive={item.isActive}
                           className="group hover:bg-accent transition-colors"
                         >
-                          <i className={`${item.icon} w-4 h-4`}></i>
+                          <item.icon size={16} />
                           <span className="group-data-[collapsible=icon]:sr-only">{item.title}</span>
                         </SidebarMenuButton>
                       </TooltipTrigger>
@@ -112,7 +147,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         isActive={location === "/notificacoes"}
                         className="group hover:bg-accent transition-colors"
                       >
-                        <i className="fas fa-bell w-4 h-4"></i>
+                        <Bell size={16} />
                         <span className="group-data-[collapsible=icon]:sr-only">Notificações</span>
                         {unreadCount > 0 && (
                           <SidebarMenuBadge className="group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-2 group-data-[collapsible=icon]:right-2">
@@ -132,27 +167,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </SidebarContent>
 
         <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <div className="flex items-center space-x-3 p-2">
-                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  D
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">Daniel</p>
-                  <p className="text-xs text-muted-foreground">daniel@email.com</p>
-                </div>
-              </div>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <a href="/api/logout" className="w-full">
-                  <i className="fas fa-sign-out-alt w-4 h-4"></i>
-                  <span>Sair</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          {/* Footer vazio - dados do usuário movidos para o header */}
         </SidebarFooter>
       </Sidebar>
 
@@ -167,16 +182,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Sino de notificações sempre visível */}
-            <Tooltip>
-              <TooltipTrigger asChild>
+            {/* Sino de notificações com dropdown */}
+            <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setLocation("/notificacoes")}
                   className="relative h-9 w-9 rounded-full hover:bg-accent"
+                  data-testid="notifications-button"
                 >
-                  <i className="fas fa-bell w-4 h-4"></i>
+                  <Bell size={16} />
                   {unreadCount > 0 && (
                     <Badge
                       variant="destructive"
@@ -186,16 +201,59 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     </Badge>
                   )}
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{unreadCount > 0 ? `${unreadCount} notificações` : "Notificações"}</p>
-              </TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+                <DropdownMenuLabel>
+                  <div className="flex items-center justify-between">
+                    <span>Notificações</span>
+                    {unreadCount > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {unreadCount} não lidas
+                      </Badge>
+                    )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {Array.isArray(notifications) && notifications.length > 0 ? (
+                  notifications.slice(0, 5).map((notification: any) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className="cursor-pointer p-3 flex flex-col items-start space-y-1"
+                      onClick={() => markNotificationAsRead(notification.id)}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-sm font-medium">{notification.title}</span>
+                        {!notification.isRead && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {notification.message}
+                      </p>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    <Bell className="mx-auto mb-2 opacity-50" size={32} />
+                    <p className="text-sm">Nenhuma notificação</p>
+                  </div>
+                )}
+                {Array.isArray(notifications) && notifications.length > 5 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setLocation("/notificacoes")}>
+                      <Eye size={16} className="mr-2" />
+                      Ver todas as notificações
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             
-            {/* Avatar do usuário */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors">
+            {/* Avatar do usuário com dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors" data-testid="user-avatar">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
                       D
@@ -205,12 +263,31 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     <p className="text-sm font-medium leading-none">Daniel</p>
                     <p className="text-xs text-muted-foreground">Administrador</p>
                   </div>
+                  <ChevronDown size={12} className="text-muted-foreground" />
                 </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Perfil do usuário</p>
-              </TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setLocation("/perfil")} data-testid="edit-profile">
+                  <UserPen size={16} className="mr-2" />
+                  Editar Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation("/configuracoes")} className="opacity-50 cursor-not-allowed">
+                  <Settings size={16} className="mr-2" />
+                  Configurações (em breve)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => window.location.href = "/api/logout"}
+                  className="text-red-600 focus:text-red-600"
+                  data-testid="logout-button"
+                >
+                  <LogOut size={16} className="mr-2" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         
