@@ -20,17 +20,45 @@ interface BillsTableProps {
 export default function BillsTable({ bills, categories, onAddBill }: BillsTableProps) {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editAmount, setEditAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentMethodName, setPaymentMethodName] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const updateBillMutation = useMutation({
+    mutationFn: async ({ billId, updateData }: { billId: string; updateData: any }) => {
+      return apiRequest("PATCH", `/api/bills/${billId}`, updateData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Conta atualizada",
+        description: "As informações da conta foram atualizadas com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      setIsEditModalOpen(false);
+      setSelectedBill(null);
+      setEditAmount("");
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar a conta.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const markAsPaidMutation = useMutation({
     mutationFn: async ({ billId, paymentData }: { billId: string; paymentData: any }) => {
       return apiRequest("PATCH", `/api/bills/${billId}`, { 
         isPaid: true, 
         paymentDate: paymentData.paymentDate,
-        paymentMethod: paymentData.paymentMethod
+        paymentMethod: paymentData.paymentMethod,
+        paymentMethodName: paymentData.paymentMethodName
       });
     },
     onSuccess: () => {
@@ -44,6 +72,7 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
       setSelectedBill(null);
       setPaymentDate("");
       setPaymentMethod("");
+      setPaymentMethodName("");
     },
     onError: () => {
       toast({
@@ -114,6 +143,21 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
     return `${dueDay.toString().padStart(2, '0')}/${currentMonth.toString().padStart(2, '0')}/${currentYear}`;
   };
 
+  const handleEditClick = (bill: Bill) => {
+    setSelectedBill(bill);
+    setEditAmount(bill.amount);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = () => {
+    if (selectedBill && editAmount) {
+      updateBillMutation.mutate({
+        billId: selectedBill.id,
+        updateData: { amount: editAmount }
+      });
+    }
+  };
+
   const handlePaymentClick = (bill: Bill) => {
     setSelectedBill(bill);
     setPaymentDate(new Date().toISOString().split('T')[0]); // Today's date
@@ -122,9 +166,18 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
 
   const handlePaymentSubmit = () => {
     if (selectedBill && paymentDate && paymentMethod) {
+      const paymentData: any = { 
+        paymentDate, 
+        paymentMethod
+      };
+      
+      if (paymentMethodName.trim()) {
+        paymentData.paymentMethodName = paymentMethodName.trim();
+      }
+      
       markAsPaidMutation.mutate({
         billId: selectedBill.id,
-        paymentData: { paymentDate, paymentMethod }
+        paymentData
       });
     }
   };
@@ -235,6 +288,7 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => handleEditClick(bill)}
                           className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                           data-testid={`button-edit-${bill.id}`}
                         >
@@ -291,6 +345,18 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
               </Select>
             </div>
             
+            <div>
+              <Label htmlFor="payment-method-name">Nome/Identificação (opcional)</Label>
+              <Input
+                id="payment-method-name"
+                type="text"
+                value={paymentMethodName}
+                onChange={(e) => setPaymentMethodName(e.target.value)}
+                placeholder="Ex: Cartão de Crédito Daniel, Conta Banco X"
+                data-testid="payment-method-name-input"
+              />
+            </div>
+            
             {selectedBill && (
               <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Resumo do Pagamento:</p>
@@ -316,6 +382,76 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
                 <>
                   <Check size={16} />
                   Confirmar Pagamento
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Edição */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="text-blue-600" size={20} />
+              Editar Conta
+            </DialogTitle>
+            <DialogDescription>
+              Edite as informações da conta "{selectedBill?.name}".
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-amount">Valor</Label>
+              <Input
+                id="edit-amount"
+                type="number"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                data-testid="edit-amount-input"
+              />
+            </div>
+            
+            {selectedBill && (
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Informações da Conta:</p>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Nome:</span>
+                    <span className="font-medium">{selectedBill.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Vencimento:</span>
+                    <span className="font-medium">Dia {selectedBill.dueDay}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Valor atual:</span>
+                    <span className="font-medium">{formatCurrency(selectedBill.amount)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleEditSubmit} 
+              disabled={!editAmount || updateBillMutation.isPending}
+              className="flex items-center gap-2"
+              data-testid="confirm-edit-button"
+            >
+              {updateBillMutation.isPending ? "Salvando..." : (
+                <>
+                  <Edit size={16} />
+                  Salvar Alterações
                 </>
               )}
             </Button>
