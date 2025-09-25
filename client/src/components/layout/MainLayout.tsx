@@ -96,14 +96,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
   ];
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center space-x-2 px-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
+    <SidebarProvider defaultOpen={true}>
+      <Sidebar collapsible="icon" variant="sidebar">
+        <SidebarHeader className="group-data-[collapsible=icon]:px-2">
+          <div className="flex items-center space-x-2 px-2 group-data-[collapsible=icon]:space-x-0 group-data-[collapsible=icon]:justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shrink-0">
               <PieChart className="text-white" size={20} />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col group-data-[collapsible=icon]:hidden">
               <div className="flex items-center gap-1">
                 <Users className="text-primary" size={16} />
                 <h1 className="text-lg font-semibold text-foreground">FinanFamily</h1>
@@ -125,10 +125,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         <SidebarMenuButton 
                           onClick={() => setLocation(item.url)}
                           isActive={item.isActive}
-                          className="group hover:bg-accent transition-colors"
+                          className="group hover:bg-accent transition-colors data-[collapsible=icon]:justify-center"
+                          data-testid={`nav-${item.title.toLowerCase()}`}
                         >
-                          <item.icon size={16} />
-                          <span className="group-data-[collapsible=icon]:sr-only">{item.title}</span>
+                          <item.icon size={16} className="shrink-0" />
+                          <span className="group-data-[collapsible=icon]:sr-only transition-opacity">{item.title}</span>
                         </SidebarMenuButton>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="group-data-[collapsible=icon]:block hidden">
@@ -145,12 +146,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       <SidebarMenuButton
                         onClick={() => setLocation("/notificacoes")}
                         isActive={location === "/notificacoes"}
-                        className="group hover:bg-accent transition-colors"
+                        className="group hover:bg-accent transition-colors data-[collapsible=icon]:justify-center relative"
+                        data-testid="nav-notifications"
                       >
-                        <Bell size={16} />
-                        <span className="group-data-[collapsible=icon]:sr-only">Notificações</span>
+                        <Bell size={16} className="shrink-0" />
+                        <span className="group-data-[collapsible=icon]:sr-only transition-opacity">Notificações</span>
                         {unreadCount > 0 && (
-                          <SidebarMenuBadge className="group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-2 group-data-[collapsible=icon]:right-2">
+                          <SidebarMenuBadge className="group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:text-xs">
                             {unreadCount > 9 ? "9+" : unreadCount}
                           </SidebarMenuBadge>
                         )}
