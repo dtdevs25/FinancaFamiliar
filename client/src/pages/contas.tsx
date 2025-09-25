@@ -175,38 +175,82 @@ export default function ContasPage() {
     }
     
     return (
-      <Card className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors duration-200" data-testid={`bill-card-${bill.id}`}>
+      <Card className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+        bill.isPaid 
+          ? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border-green-200 dark:border-green-800' 
+          : 'bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-850 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+      }`} data-testid={`bill-card-${bill.id}`}>
+        
+        {/* Status ribbon */}
         {bill.isPaid && (
-          <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-4 h-4 text-white" />
+          <div className="absolute top-0 right-0 w-0 h-0 border-l-[40px] border-l-transparent border-t-[40px] border-t-green-500">
+            <CheckCircle className="absolute -top-8 -right-1 w-4 h-4 text-white drop-shadow-sm" />
           </div>
         )}
         
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center relative" style={{ backgroundColor: category.color }}>
-                <i className={`${category.icon} text-white text-lg`}></i>
-                <div className="absolute -bottom-1 -right-1">
-                  <TypeIcon className="w-4 h-4 p-0.5 bg-white dark:bg-gray-800 rounded text-gray-600 dark:text-gray-400" />
+        <CardHeader className="pb-4">
+          {/* Header with gradient background */}
+          <div className={`absolute inset-x-0 top-0 h-20 opacity-60 ${
+            bill.isPaid 
+              ? 'bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30' 
+              : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20'
+          }`}></div>
+          
+          <div className="relative z-10 flex items-start justify-between">
+            <div className="flex items-start space-x-4">
+              {/* Enhanced icon with shadow and glow effect */}
+              <div className="relative group-hover:scale-105 transition-transform duration-200">
+                <div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${category.color}, ${category.color}dd)`,
+                    boxShadow: `0 4px 12px ${category.color}40`
+                  }}
+                >
+                  <i className={`${category.icon} text-white text-2xl drop-shadow-sm`}></i>
+                </div>
+                
+                {/* Type badge */}
+                <div className="absolute -bottom-2 -right-2 group-hover:scale-110 transition-transform duration-200">
+                  <div className="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border-2 border-white dark:border-gray-700">
+                    <TypeIcon className={`w-4 h-4 ${
+                      bill.billType === 'fixa' ? 'text-blue-600' :
+                      bill.billType === 'parcelada' ? 'text-purple-600' : 'text-green-600'
+                    }`} />
+                  </div>
                 </div>
               </div>
-              <div className="flex-1">
-                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+              
+              <div className="flex-1 pt-1">
+                <CardTitle className={`text-xl font-bold mb-1 transition-colors ${
+                  bill.isPaid 
+                    ? 'text-green-900 dark:text-green-100' 
+                    : 'text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300'
+                }`}>
                   {bill.name}
                 </CardTitle>
-                <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                <CardDescription className={`text-sm leading-relaxed ${
+                  bill.isPaid 
+                    ? 'text-green-700 dark:text-green-300' 
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}>
                   {bill.description}
                 </CardDescription>
               </div>
             </div>
             
+            {/* Enhanced amount display */}
             <div className="text-right">
-              <div className="text-xl font-bold text-gray-900 dark:text-white">
-                R$ {parseFloat(bill.amount).toFixed(2)}
+              <div className={`text-2xl font-extrabold mb-1 ${
+                bill.isPaid
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent'
+              }`}>
+                R$ {parseFloat(bill.amount).toFixed(2).replace('.', ',')}
               </div>
               {bill.installments && (
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="text-xs text-gray-600 dark:text-gray-400 font-medium flex items-center gap-1 justify-end">
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></div>
                   {bill.currentInstallment}/{bill.totalInstallments} parcelas
                 </div>
               )}
@@ -214,31 +258,63 @@ export default function ContasPage() {
           </div>
         </CardHeader>
         
-        <CardContent className="pt-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge className={`${typeInfo.color} text-xs`}>
+        <CardContent className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Enhanced badges */}
+              <Badge className={`${typeInfo.color} font-semibold px-3 py-1 shadow-sm`}>
                 {typeInfo.label}
+                {bill.billType === 'parcelada' && bill.installments && (
+                  <span className="ml-1 opacity-80">({bill.currentInstallment}/{bill.totalInstallments})</span>
+                )}
               </Badge>
-              <Badge variant="outline" className="text-xs">
+              
+              <Badge variant="outline" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border font-medium px-3 py-1">
                 {category.name}
               </Badge>
-              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              
+              <div className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1.5 ${
+                bill.isPaid 
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              }`}>
                 <Calendar size={12} />
-                Dia {bill.dueDay}
+                <span>Vence dia {bill.dueDay}</span>
               </div>
+              
+              {bill.isRecurring && (
+                <Badge variant="outline" className="border-orange-300 dark:border-orange-600 text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30">
+                  🔄 Recorrente
+                </Badge>
+              )}
             </div>
+          </div>
+          
+          {/* Enhanced action buttons */}
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100/60 dark:border-gray-700/60">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditAmount(bill)}
+              className={`group-hover:shadow-md transition-all duration-200 font-medium ${
+                bill.isPaid
+                  ? 'hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-300 dark:hover:border-green-600'
+                  : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600'
+              }`}
+              data-testid={`edit-${bill.id}`}
+            >
+              <Edit size={14} className="mr-2" />
+              Ajustar Valor
+            </Button>
             
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEditAmount(bill)}
-                data-testid={`edit-${bill.id}`}
-              >
-                <Edit size={12} className="mr-1" />
-                Editar
-              </Button>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-semibold ${
+                bill.isPaid 
+                  ? 'text-green-700 dark:text-green-300' 
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}>
+                {bill.isPaid ? '✓ Pago' : 'Pendente'}
+              </span>
               <Switch
                 checked={bill.isPaid}
                 onCheckedChange={(checked) => {
@@ -247,6 +323,11 @@ export default function ContasPage() {
                     data: { isPaid: checked }
                   });
                 }}
+                className={`${
+                  bill.isPaid 
+                    ? 'data-[state=checked]:bg-green-500' 
+                    : 'data-[state=unchecked]:bg-gray-300 dark:data-[state=unchecked]:bg-gray-600'
+                } transition-colors duration-200`}
                 data-testid={`toggle-${bill.id}`}
               />
             </div>
