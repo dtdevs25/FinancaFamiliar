@@ -31,16 +31,16 @@ import {
 import { useState } from "react";
 import { queryClient } from "@/lib/queryClient";
 import {
-  Home,
-  Receipt,
-  BarChart3,
-  Calendar,
-  Bell,
+  LayoutDashboard,
+  FileText,
+  TrendingUp,
+  CalendarDays,
+  BellRing,
   ChevronDown,
   UserPen,
   Settings,
   LogOut,
-  PieChart,
+  Wallet,
   Users,
   Eye
 } from "lucide-react";
@@ -72,25 +72,25 @@ export default function MainLayout({ children }: MainLayoutProps) {
     {
       title: "Dashboard",
       url: "/",
-      icon: Home,
+      icon: LayoutDashboard,
       isActive: location === "/" || location === "/dashboard"
     },
     {
       title: "Contas",
       url: "/contas",
-      icon: Receipt,
+      icon: FileText,
       isActive: location === "/contas"
     },
     {
       title: "Relatórios",
       url: "/relatorios",
-      icon: BarChart3,
+      icon: TrendingUp,
       isActive: location === "/relatorios"
     },
     {
       title: "Calendário",
       url: "/calendario",
-      icon: Calendar,
+      icon: CalendarDays,
       isActive: location === "/calendario"
     }
   ];
@@ -101,7 +101,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <SidebarHeader className="group-data-[collapsible=icon]:px-2">
           <div className="flex items-center space-x-2 px-2 group-data-[collapsible=icon]:space-x-0 group-data-[collapsible=icon]:justify-center">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-              <PieChart className="text-white" size={20} />
+              <Wallet className="text-white" size={20} />
             </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden">
               <div className="flex items-center gap-1">
@@ -149,7 +149,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         className="group hover:bg-accent transition-colors data-[collapsible=icon]:justify-center relative"
                         data-testid="nav-notifications"
                       >
-                        <Bell size={16} className="shrink-0" />
+                        <BellRing size={16} className="shrink-0" />
                         <span className="group-data-[collapsible=icon]:sr-only transition-opacity">Notificações</span>
                         {unreadCount > 0 && (
                           <SidebarMenuBadge className="group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:text-xs">
@@ -174,7 +174,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-4 bg-background/95 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="flex items-center gap-2 flex-1">
             <div className="h-6 w-px bg-border" />
@@ -193,7 +193,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   className="relative h-9 w-9 rounded-full hover:bg-accent"
                   data-testid="notifications-button"
                 >
-                  <Bell size={16} />
+                  <BellRing size={16} />
                   {unreadCount > 0 && (
                     <Badge
                       variant="destructive"
@@ -236,7 +236,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   ))
                 ) : (
                   <div className="p-4 text-center text-muted-foreground">
-                    <Bell className="mx-auto mb-2 opacity-50" size={32} />
+                    <BellRing className="mx-auto mb-2 opacity-50" size={32} />
                     <p className="text-sm">Nenhuma notificação</p>
                   </div>
                 )}

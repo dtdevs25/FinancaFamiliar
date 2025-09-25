@@ -1,3 +1,5 @@
+import { TrendingUp, CreditCard, Wallet, Clock } from "lucide-react";
+
 interface FinancialSummaryCardsProps {
   data: {
     monthlyIncome: number;
@@ -18,81 +20,73 @@ export default function FinancialSummaryCards({ data }: FinancialSummaryCardsPro
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {/* Total Income */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-green-500 to-emerald-600 rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 group hover:-translate-y-1">
-        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        <div className="relative z-10 flex items-center justify-between">
+      <div className="relative bg-white dark:bg-gray-900 border-l-4 border-emerald-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white/80 mb-1 font-medium">Receitas do Mês</p>
-            <p className="text-2xl font-bold text-white" data-testid="monthly-income">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Receitas do Mês</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="monthly-income">
               {formatCurrency(data.monthlyIncome)}
             </p>
-            <p className="text-xs text-white/90 mt-1 flex items-center gap-1">
-              <i className="fas fa-arrow-up"></i> +5.2% vs mês anterior
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+              <TrendingUp size={12} /> +5.2% vs mês anterior
             </p>
           </div>
-          <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-            <i className="fas fa-trending-up text-white text-lg"></i>
+          <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <TrendingUp className="text-emerald-600 dark:text-emerald-400" size={24} />
           </div>
         </div>
-        <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
       </div>
 
       {/* Total Expenses */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-red-500 via-rose-500 to-red-600 rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 group hover:-translate-y-1">
-        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        <div className="relative z-10 flex items-center justify-between">
+      <div className="relative bg-white dark:bg-gray-900 border-l-4 border-red-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white/80 mb-1 font-medium">Gastos do Mês</p>
-            <p className="text-2xl font-bold text-white" data-testid="monthly-expenses">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Gastos do Mês</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="monthly-expenses">
               {formatCurrency(data.monthlyExpenses)}
             </p>
-            <p className="text-xs text-white/90 mt-1 flex items-center gap-1">
-              <i className="fas fa-arrow-up"></i> +2.1% vs mês anterior
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+              <TrendingUp size={12} /> +2.1% vs mês anterior
             </p>
           </div>
-          <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-            <i className="fas fa-credit-card text-white text-lg"></i>
+          <div className="w-14 h-14 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <CreditCard className="text-red-600 dark:text-red-400" size={24} />
           </div>
         </div>
-        <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
       </div>
 
       {/* Balance */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 group hover:-translate-y-1">
-        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        <div className="relative z-10 flex items-center justify-between">
+      <div className="relative bg-white dark:bg-gray-900 border-l-4 border-blue-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white/80 mb-1 font-medium">Saldo do Mês</p>
-            <p className="text-2xl font-bold text-white" data-testid="monthly-balance">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Saldo do Mês</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="monthly-balance">
               {formatCurrency(data.monthlyBalance)}
             </p>
-            <p className="text-xs text-white/90 mt-1 flex items-center gap-1">
-              <i className="fas fa-arrow-up"></i> +12.3% vs mês anterior
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+              <TrendingUp size={12} /> +12.3% vs mês anterior
             </p>
           </div>
-          <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-            <i className="fas fa-piggy-bank text-white text-lg"></i>
+          <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <Wallet className="text-blue-600 dark:text-blue-400" size={24} />
           </div>
         </div>
-        <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
       </div>
 
       {/* Upcoming Bills */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500 rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 group hover:-translate-y-1">
-        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        <div className="relative z-10 flex items-center justify-between">
+      <div className="relative bg-white dark:bg-gray-900 border-l-4 border-amber-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white/80 mb-1 font-medium">Próximos Vencimentos</p>
-            <p className="text-2xl font-bold text-white" data-testid="upcoming-bills">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Próximos Vencimentos</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="upcoming-bills">
               {data.upcomingBills} contas
             </p>
-            <p className="text-xs text-white/90 mt-1">Próximos 7 dias</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Próximos 7 dias</p>
           </div>
-          <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-            <i className="fas fa-clock text-white text-lg"></i>
+          <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <Clock className="text-amber-600 dark:text-amber-400" size={24} />
           </div>
         </div>
-        <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
       </div>
     </div>
   );
