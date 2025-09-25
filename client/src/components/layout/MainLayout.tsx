@@ -85,32 +85,46 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <SidebarMenu>
                 {navigationItems.map((item) => (
                   <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton 
-                      onClick={() => setLocation(item.url)}
-                      isActive={item.isActive}
-                      tooltip={item.title}
-                    >
-                      <i className={`${item.icon} w-4 h-4`}></i>
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton 
+                          onClick={() => setLocation(item.url)}
+                          isActive={item.isActive}
+                          className="group hover:bg-accent transition-colors"
+                        >
+                          <i className={`${item.icon} w-4 h-4`}></i>
+                          <span className="group-data-[collapsible=icon]:sr-only">{item.title}</span>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="group-data-[collapsible=icon]:block hidden">
+                        <p>{item.title}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </SidebarMenuItem>
                 ))}
                 
                 {/* Notificações com badge */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setLocation("/notificacoes")}
-                    isActive={location === "/notificacoes"}
-                    tooltip="Notificações"
-                  >
-                    <i className="fas fa-bell w-4 h-4"></i>
-                    <span>Notificações</span>
-                    {unreadCount > 0 && (
-                      <SidebarMenuBadge>
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </SidebarMenuBadge>
-                    )}
-                  </SidebarMenuButton>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SidebarMenuButton
+                        onClick={() => setLocation("/notificacoes")}
+                        isActive={location === "/notificacoes"}
+                        className="group hover:bg-accent transition-colors"
+                      >
+                        <i className="fas fa-bell w-4 h-4"></i>
+                        <span className="group-data-[collapsible=icon]:sr-only">Notificações</span>
+                        {unreadCount > 0 && (
+                          <SidebarMenuBadge className="group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-2 group-data-[collapsible=icon]:right-2">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </SidebarMenuBadge>
+                        )}
+                      </SidebarMenuButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="group-data-[collapsible=icon]:block hidden">
+                      <p>Notificações {unreadCount > 0 ? `(${unreadCount})` : ""}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>

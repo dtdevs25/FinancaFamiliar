@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { Bill, Income, Category, Notification } from "@shared/schema";
 import FinancialSummaryCards from "@/components/dashboard/FinancialSummaryCards";
 import ChartsSection from "@/components/dashboard/ChartsSection";
 import BillsTable from "@/components/dashboard/BillsTable";
@@ -10,18 +11,36 @@ import AIAssistant from "@/components/dashboard/AIAssistant";
 import AddBillModal from "@/components/modals/AddBillModal";
 import AddIncomeModal from "@/components/modals/AddIncomeModal";
 
+// Interface para os dados do dashboard
+interface DashboardData {
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlyBalance: number;
+  upcomingBills: number;
+  bills: Bill[];
+  incomes: Income[];
+  categories: Category[];
+  categoryBreakdown: Array<{
+    id: string;
+    name: string;
+    color: string;
+    totalAmount: number;
+    percentage: number;
+  }>;
+}
+
 export default function Dashboard() {
   const [isAddBillModalOpen, setIsAddBillModalOpen] = useState(false);
   const [isAddIncomeModalOpen, setIsAddIncomeModalOpen] = useState(false);
   
   const userId = "default-user-id"; // In real app, get from auth context
 
-  const { data: dashboardData, isLoading } = useQuery({
+  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard", userId],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: notifications } = useQuery({
+  const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications", userId],
   });
 
