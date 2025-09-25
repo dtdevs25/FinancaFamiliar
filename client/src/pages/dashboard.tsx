@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Navigation from "@/components/ui/navigation";
 import FinancialSummaryCards from "@/components/dashboard/FinancialSummaryCards";
 import ChartsSection from "@/components/dashboard/ChartsSection";
 import BillsTable from "@/components/dashboard/BillsTable";
@@ -28,16 +27,13 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-muted rounded w-1/3"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-32 bg-muted rounded-xl"></div>
-              ))}
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-muted rounded-xl"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -46,21 +42,17 @@ export default function Dashboard() {
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-foreground">Erro ao carregar dados</h2>
-            <p className="text-muted-foreground mt-2">Tente recarregar a página</p>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-foreground">Erro ao carregar dados</h2>
+          <p className="text-muted-foreground mt-2">Tente recarregar a página</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-safe">
-      <Navigation />
+    <div className="pb-safe">
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with AI Assistant */}
@@ -129,27 +121,6 @@ export default function Dashboard() {
         userId={userId}
       />
 
-      {/* Mobile Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border md:hidden">
-        <div className="grid grid-cols-4 h-16">
-          <button className="flex flex-col items-center justify-center space-y-1 text-primary" data-testid="nav-dashboard">
-            <i className="fas fa-home"></i>
-            <span className="text-xs">Dashboard</span>
-          </button>
-          <button className="flex flex-col items-center justify-center space-y-1 text-muted-foreground" data-testid="nav-bills">
-            <i className="fas fa-receipt"></i>
-            <span className="text-xs">Contas</span>
-          </button>
-          <button className="flex flex-col items-center justify-center space-y-1 text-muted-foreground" data-testid="nav-reports">
-            <i className="fas fa-chart-line"></i>
-            <span className="text-xs">Relatórios</span>
-          </button>
-          <button className="flex flex-col items-center justify-center space-y-1 text-muted-foreground" data-testid="nav-calendar">
-            <i className="fas fa-calendar"></i>
-            <span className="text-xs">Calendário</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

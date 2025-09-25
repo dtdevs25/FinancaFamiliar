@@ -16,6 +16,8 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,7 +34,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     refetchInterval: 30000,
   });
 
-  const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0;
+  const unreadCount = Array.isArray(notifications) ? notifications.filter((n: any) => !n.isRead).length : 0;
 
   const navigationItems = [
     {
@@ -141,7 +143,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </Sidebar>
 
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-4 bg-background/95 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="flex items-center gap-2 flex-1">
             <div className="h-6 w-px bg-border" />
@@ -150,23 +152,52 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </h2>
           </div>
           
-          {/* Indicador de notificações no header */}
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation("/notificacoes")}
-              className="relative"
-            >
-              <i className="fas fa-bell w-4 h-4"></i>
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-              >
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </Badge>
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Sino de notificações sempre visível */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation("/notificacoes")}
+                  className="relative h-9 w-9 rounded-full hover:bg-accent"
+                >
+                  <i className="fas fa-bell w-4 h-4"></i>
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{unreadCount > 0 ? `${unreadCount} notificações` : "Notificações"}</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            {/* Avatar do usuário */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                      D
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden sm:block">
+                    <p className="text-sm font-medium leading-none">Daniel</p>
+                    <p className="text-xs text-muted-foreground">Administrador</p>
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Perfil do usuário</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </header>
         
         <main className="flex-1 overflow-auto">
