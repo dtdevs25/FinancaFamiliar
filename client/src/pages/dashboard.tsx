@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import type { Bill, Income, Category, Notification } from "@shared/schema";
 import FinancialSummaryCards from "@/components/dashboard/FinancialSummaryCards";
 import ChartsSection from "@/components/dashboard/ChartsSection";
@@ -32,8 +34,22 @@ interface DashboardData {
 export default function Dashboard() {
   const [isAddBillModalOpen, setIsAddBillModalOpen] = useState(false);
   const [isAddIncomeModalOpen, setIsAddIncomeModalOpen] = useState(false);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   
   const userId = "default-user-id"; // In real app, get from auth context
+
+  const handleViewReports = () => {
+    setLocation('/relatorios');
+  };
+
+  const handleExportData = () => {
+    toast({
+      title: "Funcionalidade em desenvolvimento",
+      description: "A exportação de dados estará disponível em breve. Use os relatórios para visualizar suas informações financeiras.",
+      duration: 5000,
+    });
+  };
 
   const { data: dashboardData, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard", userId],
@@ -121,6 +137,10 @@ export default function Dashboard() {
             <NotificationsPanel 
               notifications={notifications || []}
               userId={userId}
+              onAddBill={() => setIsAddBillModalOpen(true)}
+              onAddIncome={() => setIsAddIncomeModalOpen(true)}
+              onViewReports={handleViewReports}
+              onExportData={handleExportData}
             />
           </div>
         </div>

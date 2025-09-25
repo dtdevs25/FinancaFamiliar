@@ -1,14 +1,28 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Plus, TrendingUp, BarChart3, Download, Calendar, Mail, Bell, BellOff, Settings, ExternalLink } from "lucide-react";
 import type { Notification } from "@shared/schema";
 
 interface NotificationsPanelProps {
   notifications: Notification[];
   userId: string;
+  onAddBill?: () => void;
+  onAddIncome?: () => void;
+  onViewReports?: () => void;
+  onExportData?: () => void;
 }
 
-export default function NotificationsPanel({ notifications, userId }: NotificationsPanelProps) {
+export default function NotificationsPanel({ 
+  notifications, 
+  userId, 
+  onAddBill,
+  onAddIncome,
+  onViewReports,
+  onExportData 
+}: NotificationsPanelProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -44,13 +58,30 @@ export default function NotificationsPanel({ notifications, userId }: Notificati
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'warning':
-        return 'fas fa-exclamation-triangle text-warning';
+        return <Bell className="w-4 h-4 text-amber-500" />;
       case 'error':
-        return 'fas fa-times-circle text-destructive';
+        return <Bell className="w-4 h-4 text-red-500" />;
       case 'success':
-        return 'fas fa-check-circle text-success';
+        return <Bell className="w-4 h-4 text-green-500" />;
       default:
-        return 'fas fa-bell text-secondary';
+        return <Bell className="w-4 h-4 text-blue-500" />;
+    }
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'add-bill':
+        onAddBill?.();
+        break;
+      case 'add-income':
+        onAddIncome?.();
+        break;
+      case 'view-reports':
+        onViewReports?.();
+        break;
+      case 'export-data':
+        onExportData?.();
+        break;
     }
   };
 
@@ -88,103 +119,185 @@ export default function NotificationsPanel({ notifications, userId }: Notificati
   const unreadNotifications = notifications.filter(n => !n.isRead);
 
   return (
-    <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Notificações</h3>
-        {unreadNotifications.length > 0 && (
-          <button 
-            className="text-primary hover:text-primary/80 text-sm font-medium"
-            onClick={() => markAllAsReadMutation.mutate()}
-            disabled={markAllAsReadMutation.isPending}
-            data-testid="button-mark-all-read"
-          >
-            Marcar todas como lidas
-          </button>
-        )}
-      </div>
-
-      <div className="space-y-3 max-h-96 overflow-y-auto">
-        {notifications.length === 0 ? (
-          <div className="text-center py-8">
-            <i className="fas fa-bell-slash text-4xl text-muted-foreground mb-2"></i>
-            <p className="text-muted-foreground">Nenhuma notificação</p>
-          </div>
-        ) : (
-          notifications.slice(0, 10).map((notification) => (
-            <div 
-              key={notification.id} 
-              className={`flex items-start space-x-3 p-3 border rounded-lg cursor-pointer transition-opacity ${
-                notification.isRead ? 'opacity-60' : ''
-              } ${getNotificationBg(notification.type)}`}
-              onClick={() => !notification.isRead && markAsReadMutation.mutate(notification.id)}
-              data-testid={`notification-${notification.id}`}
-            >
-              <div className="w-8 h-8 bg-opacity-10 rounded-full flex items-center justify-center flex-shrink-0">
-                <i className={`${getNotificationIcon(notification.type)} text-sm`}></i>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{notification.title}</p>
-                <p className="text-xs text-muted-foreground">{notification.message}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatTimeAgo(notification.createdAt!)}
-                </p>
-              </div>
-              {!notification.isRead && (
-                <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2"></div>
-              )}
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-900 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Bell className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
-          ))
-        )}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notificações</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {unreadNotifications.length > 0 
+                  ? `${unreadNotifications.length} não lida(s)` 
+                  : "Tudo em dia"}
+              </p>
+            </div>
+          </div>
+          {unreadNotifications.length > 0 && (
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => markAllAsReadMutation.mutate()}
+              disabled={markAllAsReadMutation.isPending}
+              className="text-xs"
+              data-testid="button-mark-all-read"
+            >
+              {markAllAsReadMutation.isPending ? "Marcando..." : "Marcar todas"}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-6 pt-6 border-t border-border">
-        <h4 className="font-medium text-foreground mb-3">Ações Rápidas</h4>
-        <div className="grid grid-cols-2 gap-3">
-          <button className="p-4 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors text-left" data-testid="button-add-bill-quick">
-            <i className="fas fa-plus text-primary mb-2"></i>
-            <p className="text-sm font-medium text-foreground">Adicionar Conta</p>
-          </button>
-          
-          <button className="p-4 bg-success/10 hover:bg-success/20 rounded-lg transition-colors text-left" data-testid="button-add-income-quick">
-            <i className="fas fa-arrow-up text-success mb-2"></i>
-            <p className="text-sm font-medium text-foreground">Registrar Receita</p>
-          </button>
-          
-          <button className="p-4 bg-secondary/10 hover:bg-secondary/20 rounded-lg transition-colors text-left" data-testid="button-view-reports">
-            <i className="fas fa-chart-bar text-secondary mb-2"></i>
-            <p className="text-sm font-medium text-foreground">Ver Relatórios</p>
-          </button>
-          
-          <button className="p-4 bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors text-left" data-testid="button-export-data">
-            <i className="fas fa-download text-accent mb-2"></i>
-            <p className="text-sm font-medium text-foreground">Exportar Dados</p>
-          </button>
+      {/* Content */}
+      <div className="p-6">
+        {/* Notifications List */}
+        <div className="space-y-3 max-h-72 overflow-y-auto mb-6">
+          {notifications.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <BellOff className="w-8 h-8 text-gray-400" />
+              </div>
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Nenhuma notificação</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Você estará sempre atualizado sobre suas finanças</p>
+            </div>
+          ) : (
+            notifications.slice(0, 10).map((notification) => (
+              <div 
+                key={notification.id} 
+                className={`flex items-start space-x-3 p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  notification.isRead 
+                    ? 'opacity-60 bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' 
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800'
+                } ${getNotificationBg(notification.type)}`}
+                onClick={() => !notification.isRead && markAsReadMutation.mutate(notification.id)}
+                data-testid={`notification-${notification.id}`}
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  {getNotificationIcon(notification.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white leading-snug">{notification.title}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{notification.message}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                    {formatTimeAgo(notification.createdAt!)}
+                  </p>
+                </div>
+                {!notification.isRead && (
+                  <div className="w-3 h-3 bg-purple-500 rounded-full flex-shrink-0 mt-1 animate-pulse"></div>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
-        {/* Integration Settings */}
-        <div className="mt-6 pt-6 border-t border-border">
-          <h4 className="font-medium text-foreground mb-3">Integrações</h4>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-calendar-alt text-muted-foreground"></i>
-                <span className="text-sm">Google Agenda</span>
+        {/* Quick Actions */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Ações Rápidas
+          </h4>
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => handleQuickAction('add-bill')}
+              className="group p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-800/30 dark:hover:to-indigo-800/30 rounded-xl transition-all duration-200 text-left border border-blue-200/50 dark:border-blue-800/50 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md" 
+              data-testid="button-add-bill-quick"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                  <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-success rounded-full"></div>
-                <span className="text-xs text-success">Conectado</span>
-              </div>
-            </div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Adicionar Conta</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Nova conta a pagar</p>
+            </button>
             
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-envelope text-muted-foreground"></i>
-                <span className="text-sm">Email Notifications</span>
+            <button 
+              onClick={() => handleQuickAction('add-income')}
+              className="group p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 hover:from-green-100 hover:to-emerald-100 dark:hover:from-green-800/30 dark:hover:to-emerald-800/30 rounded-xl transition-all duration-200 text-left border border-green-200/50 dark:border-green-800/50 hover:border-green-300 dark:hover:border-green-700 hover:shadow-md" 
+              data-testid="button-add-income-quick"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                  <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
               </div>
-              <button className="text-xs text-primary hover:text-primary/80" data-testid="button-configure-email">
-                Configurar
-              </button>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Registrar Receita</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Nova fonte de renda</p>
+            </button>
+            
+            <button 
+              onClick={() => handleQuickAction('view-reports')}
+              className="group p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-800/30 dark:hover:to-pink-800/30 rounded-xl transition-all duration-200 text-left border border-purple-200/50 dark:border-purple-800/50 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md" 
+              data-testid="button-view-reports"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                  <BarChart3 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Ver Relatórios</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Análises financeiras</p>
+            </button>
+            
+            <button 
+              onClick={() => handleQuickAction('export-data')}
+              className="group p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-800/30 dark:hover:to-orange-800/30 rounded-xl transition-all duration-200 text-left border border-amber-200/50 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md" 
+              data-testid="button-export-data"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg group-hover:scale-110 transition-transform">
+                  <Download className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Exportar Dados</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Download relatórios</p>
+            </button>
+          </div>
+
+          {/* Integration Settings */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <ExternalLink className="w-4 h-4" />
+              Integrações
+            </h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center space-x-3">
+                  <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Google Agenda</span>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Sincronização ativa</p>
+                  </div>
+                </div>
+                <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800">
+                  Conectado
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-3">
+                  <Mail className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Notificações Email</span>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Configuração pendente</p>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                  data-testid="button-configure-email"
+                  onClick={() => toast({
+                    title: "Funcionalidade em desenvolvimento",
+                    description: "A configuração de email estará disponível em breve.",
+                  })}
+                >
+                  Configurar
+                </Button>
+              </div>
             </div>
           </div>
         </div>
