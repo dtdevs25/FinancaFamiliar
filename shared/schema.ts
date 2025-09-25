@@ -28,6 +28,11 @@ export const bills = pgTable("bills", {
   dueDay: integer("due_day").notNull(), // Day of month (1-31)
   isPaid: boolean("is_paid").default(false),
   isRecurring: boolean("is_recurring").default(true),
+  // Campos para sistema de parcelas
+  isInstallment: boolean("is_installment").default(false),
+  totalInstallments: integer("total_installments"),
+  currentInstallment: integer("current_installment"),
+  originalAmount: decimal("original_amount", { precision: 10, scale: 2 }), // Valor total original
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -90,6 +95,10 @@ export const insertBillSchema = createInsertSchema(bills).pick({
   amount: true,
   dueDay: true,
   isRecurring: true,
+  isInstallment: true,
+  totalInstallments: true,
+  currentInstallment: true,
+  originalAmount: true,
 });
 
 export const insertIncomeSchema = createInsertSchema(incomes).pick({
