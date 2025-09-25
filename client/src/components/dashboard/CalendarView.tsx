@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { Bill, Income } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, ChevronLeft, ChevronRight, DollarSign, CreditCard, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar, ChevronLeft, ChevronRight, DollarSign, CreditCard, AlertCircle, Clock, User } from "lucide-react";
 
 interface CalendarViewProps {
   bills: Bill[];
@@ -11,6 +12,8 @@ interface CalendarViewProps {
 
 export default function CalendarView({ bills, incomes }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
 
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
@@ -54,6 +57,26 @@ export default function CalendarView({ bills, incomes }: CalendarViewProps) {
     return events;
   };
 
+  const getBillsForDay = (day: number) => {
+    return bills.filter(bill => bill.dueDay === day);
+  };
+
+  const getIncomesForDay = (day: number) => {
+    return incomes.filter(income => income.receiptDay === day);
+  };
+
+  const handleDayClick = (day: number) => {
+    setSelectedDay(day);
+    setIsDayModalOpen(true);
+  };
+
+  const formatCurrency = (amount: string) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(parseFloat(amount));
+  };
+
   const renderCalendarDays = () => {
     const days = [];
     
@@ -75,7 +98,12 @@ export default function CalendarView({ bills, incomes }: CalendarViewProps) {
       days.push(
         <div 
           key={day} 
-          className={`p-3 relative min-h-[60px] rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 ${
+          onClick={() => handleDayClick(day)}
+          className={`p-3 relative min-h-[60px] rounded-lg transition-all duration-200 cursor-pointer ${
+            events.length > 0 
+              ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800' 
+              : 'hover:bg-gray-100 dark:hover:bg-gray-700/50'
+          } ${
             isToday 
               ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-800 dark:text-indigo-300 border-2 border-indigo-300 dark:border-indigo-700 font-semibold' 
               : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
@@ -190,6 +218,142 @@ export default function CalendarView({ bills, incomes }: CalendarViewProps) {
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Atrasados</span>
           </div>
         </div>
+
+        {/* Modal de Detalhes do Dia */}
+        <Dialog open={isDayModalOpen} onOpenChange={(open) => {
+          setIsDayModalOpen(open);
+          if (!open) setSelectedDay(null);
+        }}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Calendar className="text-indigo-600" size={20} />
+                Detalhes do Dia {selectedDay}
+              </DialogTitle>
+              <DialogDescription>
+                {monthNames[currentMonth]} {currentYear} - Veja todas as contas e receitas para este dia
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {selectedDay && getBillsForDay(selectedDay).length > 0 && (
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <CreditCard className="text-amber-600" size={18} />
+                    Contas a Vencer ({getBillsForDay(selectedDay).length})
+                  </h4>
+                  <div className="space-y-3">
+                    {getBillsForDay(selectedDay).map((bill) => {
+                      const isOverdue = selectedDay && selectedDay < today;
+                      return (
+                        <div key={bill.id} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h5 className="font-medium text-gray-900 dark:text-white">{bill.name}</h5>
+                              {bill.description && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{bill.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 mt-2">
+                                <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                                  <Clock size={14} />
+                                  <span>Vence dia {bill.dueDay}</span>
+                                </div>
+                                {bill.isPaid && (
+                                  <Badge className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300">
+                                    Pago
+                                  </Badge>
+                                )}
+                                {isOverdue && !bill.isPaid && (
+                                  <Badge variant="destructive">
+                                    Atrasado
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                                {formatCurrency(bill.amount)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedDay && getIncomesForDay(selectedDay).length > 0 && (
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <DollarSign className="text-green-600" size={18} />
+                    Receitas ({getIncomesForDay(selectedDay).length})
+                  </h4>
+                  <div className="space-y-3">
+                    {getIncomesForDay(selectedDay).map((income) => (
+                      <div key={income.id} className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h5 className="font-medium text-gray-900 dark:text-white">{income.source}</h5>
+                            {income.description && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{income.description}</p>
+                            )}
+                            <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-2">
+                              <User size={14} />
+                              <span>Dia {income.receiptDay}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-semibold text-green-700 dark:text-green-400">
+                              {formatCurrency(income.amount)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedDay && getBillsForDay(selectedDay).length === 0 && getIncomesForDay(selectedDay).length === 0 && (
+                <div className="text-center py-8">
+                  <Calendar className="mx-auto text-gray-400 mb-4" size={48} />
+                  <h5 className="text-lg font-medium text-gray-500 dark:text-gray-400">Nenhum evento neste dia</h5>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">Não há contas ou receitas programadas para este dia.</p>
+                </div>
+              )}
+
+              {/* Summary */}
+              {selectedDay && (getBillsForDay(selectedDay).length > 0 || getIncomesForDay(selectedDay).length > 0) && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Resumo do Dia</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Total em Contas:</p>
+                      <p className="text-lg font-semibold text-red-600 dark:text-red-400">
+                        {formatCurrency(
+                          getBillsForDay(selectedDay || 0)
+                            .reduce((sum, bill) => sum + parseFloat(bill.amount), 0)
+                            .toString()
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Total em Receitas:</p>
+                      <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        {formatCurrency(
+                          getIncomesForDay(selectedDay || 0)
+                            .reduce((sum, income) => sum + parseFloat(income.amount), 0)
+                            .toString()
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
