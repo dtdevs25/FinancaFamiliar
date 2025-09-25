@@ -40,7 +40,7 @@ import {
   UserPen,
   Settings,
   LogOut,
-  Wallet,
+  DollarSign,
   Users,
   Eye
 } from "lucide-react";
@@ -101,12 +101,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <SidebarHeader className="group-data-[collapsible=icon]:px-2">
           <div className="flex items-center space-x-2 px-2 group-data-[collapsible=icon]:space-x-0 group-data-[collapsible=icon]:justify-center">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-              <Wallet className="text-white" size={20} />
+              <DollarSign className="text-white" size={20} />
             </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden">
               <div className="flex items-center gap-1">
-                <Users className="text-primary" size={16} />
-                <h1 className="text-lg font-semibold text-foreground">FinanFamily</h1>
+                <DollarSign className="text-primary" size={16} />
+                <h1 className="text-lg font-semibold text-foreground">SantosFinance</h1>
               </div>
               <p className="text-xs text-muted-foreground">Gestão Financeira</p>
             </div>
@@ -177,7 +177,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="flex items-center gap-2 flex-1">
-            <div className="h-6 w-px bg-border" />
             <h2 className="text-lg font-semibold">
               {navigationItems.find(item => item.isActive)?.title || "Dashboard"}
             </h2>
