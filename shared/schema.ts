@@ -33,6 +33,10 @@ export const bills = pgTable("bills", {
   totalInstallments: integer("total_installments"),
   currentInstallment: integer("current_installment"),
   originalAmount: decimal("original_amount", { precision: 10, scale: 2 }), // Valor total original
+  // Campos de pagamento
+  paymentDate: date("payment_date"),
+  paymentMethod: text("payment_method"), // "pix", "credit", "debit", "cash", etc.
+  paymentSource: text("payment_source"), // "Cartão de Crédito Dani", "Conta Corrente João", etc.
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -99,6 +103,27 @@ export const insertBillSchema = createInsertSchema(bills).pick({
   totalInstallments: true,
   currentInstallment: true,
   originalAmount: true,
+});
+
+export const updateBillSchema = createInsertSchema(bills).pick({
+  categoryId: true,
+  name: true,
+  description: true,
+  amount: true,
+  dueDay: true,
+  isRecurring: true,
+  isPaid: true,
+  isInstallment: true,
+  totalInstallments: true,
+  currentInstallment: true,
+  originalAmount: true,
+  paymentDate: true,
+  paymentMethod: true,
+  paymentSource: true,
+}).partial().extend({
+  paymentDate: z.string().nullable().optional(),
+  paymentMethod: z.string().nullable().optional(),
+  paymentSource: z.string().nullable().optional(),
 });
 
 export const insertIncomeSchema = createInsertSchema(incomes).pick({

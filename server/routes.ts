@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
   insertBillSchema, 
+  updateBillSchema,
   insertIncomeSchema, 
   insertNotificationSchema,
   insertCategorySchema 
@@ -96,7 +97,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/bills/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const bill = await storage.updateBill(id, req.body);
+      const validatedData = updateBillSchema.parse(req.body);
+      const bill = await storage.updateBill(id, validatedData);
       if (!bill) {
         return res.status(404).json({ message: "Conta não encontrada" });
       }

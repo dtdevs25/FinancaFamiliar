@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Grid3X3, List, Edit, Calendar, CreditCard, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Search, Plus, Grid3X3, List, Edit, Calendar, CreditCard, Clock, CheckCircle, AlertCircle, Building, Zap, Wifi, Car, Phone, Utensils, ShoppingCart, GraduationCap, Heart, Gamepad2, Home, Wrench } from "lucide-react";
 import AddBillModal from "@/components/modals/AddBillModal";
 
 export default function ContasPage() {
@@ -18,6 +18,10 @@ export default function ContasPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editedAmount, setEditedAmount] = useState("");
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentDate, setPaymentDate] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentSource, setPaymentSource] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const { toast } = useToast();
@@ -99,6 +103,59 @@ export default function ContasPage() {
     return Array.isArray(categories) ? categories.find((cat: any) => cat.id === categoryId) || { name: "Outros", color: "#6B7280", icon: "fas fa-tag" } : { name: "Outros", color: "#6B7280", icon: "fas fa-tag" };
   };
 
+  // Função para obter ícone específico baseado no nome da conta
+  const getSpecificIcon = (billName: string) => {
+    const name = billName.toLowerCase();
+    
+    // Moradia/Imóveis
+    if (name.includes('apartamento') || name.includes('aluguel') || name.includes('condomínio')) {
+      return Building;
+    }
+    // Energia
+    if (name.includes('cpfl') || name.includes('energia') || name.includes('enel') || name.includes('light')) {
+      return Zap;
+    }
+    // Internet/Telecomunicações
+    if (name.includes('internet') || name.includes('vivo') || name.includes('claro') || name.includes('tim') || name.includes('oi')) {
+      return Wifi;
+    }
+    // Telefone
+    if (name.includes('telefone') || name.includes('celular')) {
+      return Phone;
+    }
+    // Veículo
+    if (name.includes('carro') || name.includes('moto') || name.includes('ipva') || name.includes('seguro auto')) {
+      return Car;
+    }
+    // Alimentação
+    if (name.includes('supermercado') || name.includes('alimentação') || name.includes('comida')) {
+      return Utensils;
+    }
+    // Compras
+    if (name.includes('cartão') && (name.includes('crédito') || name.includes('débito'))) {
+      return CreditCard;
+    }
+    // Educação
+    if (name.includes('escola') || name.includes('curso') || name.includes('faculdade') || name.includes('educação')) {
+      return GraduationCap;
+    }
+    // Saúde
+    if (name.includes('plano') && name.includes('saúde') || name.includes('médico') || name.includes('hospital')) {
+      return Heart;
+    }
+    // Lazer/Entretenimento
+    if (name.includes('netflix') || name.includes('spotify') || name.includes('steam') || name.includes('jogo')) {
+      return Gamepad2;
+    }
+    // Casa/Utilidades gerais
+    if (name.includes('água') || name.includes('gás') || name.includes('limpeza') || name.includes('manutenção')) {
+      return Wrench;
+    }
+    
+    // Padrão - casa
+    return Home;
+  };
+
   const handleEditAmount = (bill: any) => {
     setSelectedBill(bill);
     setEditedAmount(bill.amount);
@@ -114,6 +171,47 @@ export default function ContasPage() {
     }
   };
 
+  const handleTogglePayment = (checked: boolean, bill: any) => {
+    if (checked) {
+      // Se está marcando como pago, abrir modal para capturar detalhes
+      setSelectedBill(bill);
+      setPaymentDate(new Date().toISOString().split('T')[0]); // Data de hoje
+      setIsPaymentModalOpen(true);
+    } else {
+      // Se está desmarcando como pago, limpar todos os dados de pagamento
+      updateBillMutation.mutate({
+        id: bill.id,
+        data: { 
+          isPaid: false,
+          paymentDate: null,
+          paymentMethod: null,
+          paymentSource: null
+        }
+      });
+    }
+  };
+
+  const handleSavePayment = () => {
+    if (selectedBill && paymentDate && paymentMethod) {
+      updateBillMutation.mutate({
+        id: selectedBill.id,
+        data: { 
+          isPaid: true,
+          paymentDate,
+          paymentMethod,
+          paymentSource: paymentSource || undefined
+        }
+      });
+      
+      // Limpar modal
+      setIsPaymentModalOpen(false);
+      setSelectedBill(null);
+      setPaymentDate("");
+      setPaymentMethod("");
+      setPaymentSource("");
+    }
+  };
+
   const BillCard = ({ bill }: { bill: any }) => {
     const category = getCategoryInfo(bill.categoryId);
     const typeInfo = getBillTypeInfo(bill.billType);
@@ -124,7 +222,10 @@ export default function ContasPage() {
         <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200" data-testid={`bill-${bill.id}`}>
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: category.color }}>
-              <i className={`${category.icon} text-white text-sm`}></i>
+              {(() => {
+                const SpecificIcon = getSpecificIcon(bill.name);
+                return <SpecificIcon className="w-5 h-5 text-white" />;
+              })()}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -160,12 +261,7 @@ export default function ContasPage() {
               </Button>
               <Switch
                 checked={bill.isPaid}
-                onCheckedChange={(checked) => {
-                  updateBillMutation.mutate({
-                    id: bill.id,
-                    data: { isPaid: checked }
-                  });
-                }}
+                onCheckedChange={(checked) => handleTogglePayment(checked, bill)}
                 data-testid={`toggle-${bill.id}`}
               />
             </div>
@@ -207,7 +303,10 @@ export default function ContasPage() {
                     boxShadow: `0 4px 12px ${category.color}40`
                   }}
                 >
-                  <i className={`${category.icon} text-white text-2xl drop-shadow-sm`}></i>
+                  {(() => {
+                    const SpecificIcon = getSpecificIcon(bill.name);
+                    return <SpecificIcon className="w-8 h-8 text-white drop-shadow-sm" />;
+                  })()}
                 </div>
                 
                 {/* Type badge */}
@@ -317,12 +416,7 @@ export default function ContasPage() {
               </span>
               <Switch
                 checked={bill.isPaid}
-                onCheckedChange={(checked) => {
-                  updateBillMutation.mutate({
-                    id: bill.id,
-                    data: { isPaid: checked }
-                  });
-                }}
+                onCheckedChange={(checked) => handleTogglePayment(checked, bill)}
                 className={`${
                   bill.isPaid 
                     ? 'data-[state=checked]:bg-green-500' 
@@ -466,6 +560,81 @@ export default function ContasPage() {
               </Button>
               <Button onClick={handleSaveAmount} disabled={updateBillMutation.isPending}>
                 {updateBillMutation.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Modal de Detalhes de Pagamento */}
+        <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Registrar Pagamento</DialogTitle>
+              <DialogDescription>
+                Informe os detalhes do pagamento de <strong>{selectedBill?.name}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="payment-date">Data do Pagamento</Label>
+                <Input
+                  id="payment-date"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  data-testid="input-payment-date"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="payment-method">Forma de Pagamento</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger data-testid="select-payment-method">
+                    <SelectValue placeholder="Selecione a forma de pagamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="debit">Cartão de Débito</SelectItem>
+                    <SelectItem value="credit">Cartão de Crédito</SelectItem>
+                    <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                    <SelectItem value="cash">Dinheiro</SelectItem>
+                    <SelectItem value="bank_slip">Boleto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="payment-source">Origem do Pagamento (opcional)</Label>
+                <Input
+                  id="payment-source"
+                  placeholder="Ex: Cartão de Crédito Dani, Conta Corrente João, etc."
+                  value={paymentSource}
+                  onChange={(e) => setPaymentSource(e.target.value)}
+                  data-testid="input-payment-source"
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsPaymentModalOpen(false);
+                  setSelectedBill(null);
+                  setPaymentDate("");
+                  setPaymentMethod("");
+                  setPaymentSource("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSavePayment} 
+                disabled={!paymentDate || !paymentMethod || updateBillMutation.isPending}
+                data-testid="button-save-payment"
+              >
+                {updateBillMutation.isPending ? "Salvando..." : "Registrar Pagamento"}
               </Button>
             </DialogFooter>
           </DialogContent>
