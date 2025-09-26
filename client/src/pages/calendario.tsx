@@ -169,7 +169,6 @@ export default function CalendarioPage() {
       .slice(0, 5);
   };
 
-
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
     setIsModalOpen(true);
@@ -183,6 +182,7 @@ export default function CalendarioPage() {
           : 'bg-blue-50 border-blue-200'
       }`}
       onClick={() => handleEventClick(event)}
+      data-testid={`event-card-${event.id}`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -208,19 +208,17 @@ export default function CalendarioPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-6 py-8">
-        {/* Header moderno */}
+    <div className="pb-safe">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
             <div className="mb-4 lg:mb-0">
-              <h1 className="text-4xl font-bold text-foreground mb-2 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
-                  <CalendarIcon className="w-8 h-8 text-white" />
-                </div>
+              <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+                <CalendarIcon className="w-8 h-8 text-primary" />
                 Calendário Financeiro
               </h1>
-              <p className="text-muted-foreground text-lg">
+              <p className="text-muted-foreground">
                 Visualize e gerencie seus compromissos financeiros
               </p>
             </div>
@@ -239,7 +237,7 @@ export default function CalendarioPage() {
               </Button>
               
               {/* Layout toggle */}
-              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border">
+              <div className="flex items-center gap-1 bg-background rounded-lg p-1 shadow-sm border">
                 <Button
                   variant={layoutMode === 'grid' ? "default" : "ghost"}
                   size="sm"
@@ -259,7 +257,7 @@ export default function CalendarioPage() {
               </div>
               
               {/* View mode tabs */}
-              <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
+              <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="bg-background rounded-lg shadow-sm border">
                 <TabsList className="grid grid-cols-3">
                   <TabsTrigger value="month" className="text-sm">Mês</TabsTrigger>
                   <TabsTrigger value="week" className="text-sm">Semana</TabsTrigger>
@@ -271,7 +269,7 @@ export default function CalendarioPage() {
           
           {/* Filtros expansíveis */}
           {showFilters && (
-            <Card className="mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="mb-6">
               <CardContent className="p-4">
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
@@ -298,8 +296,8 @@ export default function CalendarioPage() {
             </Card>
           )}
           
-          {/* Navegação de datas moderna */}
-          <Card className="mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+          {/* Navegação de datas */}
+          <Card className="mb-6">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -307,7 +305,6 @@ export default function CalendarioPage() {
                     variant="outline"
                     size="sm"
                     onClick={navigatePrevious}
-                    className="hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600"
                     data-testid="button-navigate-previous"
                   >
                     <ChevronLeft size={16} />
@@ -317,7 +314,6 @@ export default function CalendarioPage() {
                     variant="outline"
                     size="sm"
                     onClick={navigateToday}
-                    className="px-4 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600"
                     data-testid="button-navigate-today"
                   >
                     Hoje
@@ -327,7 +323,6 @@ export default function CalendarioPage() {
                     variant="outline"
                     size="sm"
                     onClick={navigateNext}
-                    className="hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600"
                     data-testid="button-navigate-next"
                   >
                     <ChevronRight size={16} />
@@ -387,6 +382,7 @@ export default function CalendarioPage() {
                       color: 'white'
                     }
                   }}
+                  data-testid="calendar-main"
                 />
               </CardContent>
             </Card>
@@ -417,7 +413,7 @@ export default function CalendarioPage() {
                     
                     {getEventsForDate(selectedDate).length === 0 && (
                       <div className="text-center py-4 text-muted-foreground">
-                        <i className="fas fa-calendar-times text-2xl mb-2"></i>
+                        <CalendarIcon className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                         <p className="text-sm">Nenhum evento nesta data</p>
                       </div>
                     )}
@@ -437,8 +433,11 @@ export default function CalendarioPage() {
               <CardContent>
                 <div className="space-y-3">
                   {getUpcomingEvents().map((event) => (
-                    <div key={event.id} className="flex items-center justify-between p-2 rounded border-l-4"
-                         style={{ borderLeftColor: event.type === 'bill' ? '#EF4444' : '#3B82F6' }}>
+                    <div key={event.id} 
+                         className="flex items-center justify-between p-2 rounded border-l-4"
+                         style={{ borderLeftColor: event.type === 'bill' ? '#EF4444' : '#3B82F6' }}
+                         onClick={() => handleEventClick(event)}
+                         data-testid={`upcoming-event-${event.id}`}>
                       <div>
                         <div className="font-medium text-sm">{event.title}</div>
                         <div className="text-xs text-muted-foreground">
@@ -455,7 +454,7 @@ export default function CalendarioPage() {
                   
                   {getUpcomingEvents().length === 0 && (
                     <div className="text-center py-4 text-muted-foreground">
-                      <i className="fas fa-check-circle text-2xl mb-2 text-green-500"></i>
+                      <Clock className="w-8 h-8 mx-auto mb-2 text-green-500" />
                       <p className="text-sm">Nenhum vencimento próximo</p>
                     </div>
                   )}
@@ -549,7 +548,7 @@ export default function CalendarioPage() {
             )}
           </DialogContent>
         </Dialog>
-      </div>
+      </main>
     </div>
   );
 }
