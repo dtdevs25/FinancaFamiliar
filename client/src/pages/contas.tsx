@@ -19,11 +19,13 @@ export default function ContasPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editedAmount, setEditedAmount] = useState("");
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isUnpayConfirmModalOpen, setIsUnpayConfirmModalOpen] = useState(false);
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentSource, setPaymentSource] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  const [shouldOpenEditAfterUnpay, setShouldOpenEditAfterUnpay] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -50,11 +52,24 @@ export default function ContasPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard", userId] });
-      setIsEditModalOpen(false);
-      toast({
-        title: "Conta atualizada",
-        description: "A conta foi atualizada com sucesso!",
-      });
+      
+      if (shouldOpenEditAfterUnpay) {
+        // Abrir modal de edição após desfazer pagamento
+        setShouldOpenEditAfterUnpay(false);
+        setEditedAmount(selectedBill?.amount || "");
+        setIsEditModalOpen(true);
+        toast({
+          title: "Pagamento desfeito",
+          description: "A conta voltou para o status pendente e você pode editá-la agora.",
+        });
+      } else {
+        // Fechar modal de edição normalmente
+        setIsEditModalOpen(false);
+        toast({
+          title: "Conta atualizada",
+          description: "A conta foi atualizada com sucesso!",
+        });
+      }
     },
     onError: () => {
       toast({
@@ -158,8 +173,15 @@ export default function ContasPage() {
 
   const handleEditAmount = (bill: any) => {
     setSelectedBill(bill);
-    setEditedAmount(bill.amount);
-    setIsEditModalOpen(true);
+    
+    if (bill.isPaid) {
+      // Se a conta está paga, mostrar modal de confirmação
+      setIsUnpayConfirmModalOpen(true);
+    } else {
+      // Se não está paga, abrir modal de edição normalmente
+      setEditedAmount(bill.amount);
+      setIsEditModalOpen(true);
+    }
   };
 
   const handleSaveAmount = () => {
@@ -178,9 +200,19 @@ export default function ContasPage() {
       setPaymentDate(new Date().toISOString().split('T')[0]); // Data de hoje
       setIsPaymentModalOpen(true);
     } else {
-      // Se está desmarcando como pago, limpar todos os dados de pagamento
+      // Se está desmarcando como pago, mostrar confirmação primeiro
+      setSelectedBill(bill);
+      setIsUnpayConfirmModalOpen(true);
+    }
+  };
+
+  const handleUnpayConfirm = () => {
+    if (selectedBill) {
+      // Definir flag para abrir modal de edição após o sucesso da mutation
+      setShouldOpenEditAfterUnpay(true);
+      
       updateBillMutation.mutate({
-        id: bill.id,
+        id: selectedBill.id,
         data: { 
           isPaid: false,
           paymentDate: null,
@@ -188,6 +220,8 @@ export default function ContasPage() {
           paymentSource: null
         }
       });
+      
+      setIsUnpayConfirmModalOpen(false);
     }
   };
 
@@ -635,6 +669,80 @@ export default function ContasPage() {
                 data-testid="button-save-payment"
               >
                 {updateBillMutation.isPending ? "Salvando..." : "Registrar Pagamento"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Modal de Confirmação para Desfazer Pagamento */}
+        <Dialog open={isUnpayConfirmModalOpen} onOpenChange={setIsUnpayConfirmModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertCircle className="text-amber-600" size={20} />
+                Conta já está paga
+              </DialogTitle>
+              <DialogDescription>
+                A conta "{selectedBill?.name}" está marcada como paga. Para editá-la, é necessário desfazer o pagamento primeiro.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="text-amber-600 dark:text-amber-400" size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                      Atenção
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      Ao confirmar, o pagamento será desfeito e a conta voltará para o status pendente. Você poderá então editá-la normalmente.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedBill && (
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Informações da Conta:</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Nome:</span>
+                      <span className="font-medium">{selectedBill.name}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Valor:</span>
+                      <span className="font-medium">R$ {parseFloat(selectedBill.amount).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Status:</span>
+                      <Badge className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300">
+                        ✓ Pago
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsUnpayConfirmModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleUnpayConfirm} 
+                disabled={updateBillMutation.isPending}
+                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+                data-testid="confirm-unpay-button"
+              >
+                {updateBillMutation.isPending ? "Processando..." : (
+                  <>
+                    <AlertCircle size={16} />
+                    Desfazer Pagamento
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
