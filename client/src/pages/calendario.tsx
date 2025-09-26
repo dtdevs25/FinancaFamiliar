@@ -80,8 +80,8 @@ export default function CalendarioPage() {
     // Adicionar receitas
     incomes.forEach((income: any) => {
       if (income.receiptDay) {
-        const receiptDate = new Date(currentYear, currentMonth, income.receiptDay);
-        if (income.receiptDay <= new Date(currentYear, currentMonth + 1, 0).getDate()) {
+        const receiptDate = new Date(viewYear, viewMonth, income.receiptDay);
+        if (income.receiptDay <= new Date(viewYear, viewMonth + 1, 0).getDate()) {
           events.push({
             id: income.id,
             title: income.description,
