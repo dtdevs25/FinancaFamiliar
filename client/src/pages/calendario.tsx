@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Calendar as CalendarIcon, 
+  Clock, 
+  DollarSign, 
+  TrendingUp, 
+  TrendingDown,
+  Filter,
+  Grid3X3,
+  List
+} from "lucide-react";
+import { format, addWeeks, subWeeks, addMonths, subMonths, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isSameMonth, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface CalendarEvent {
   id: string;
@@ -18,10 +32,14 @@ interface CalendarEvent {
 }
 
 export default function CalendarioPage() {
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'agenda'>('month');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'bills' | 'income'>('all');
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
   
   const userId = "default-user-id";
 
@@ -81,28 +99,76 @@ export default function CalendarioPage() {
 
   const calendarEvents = generateCalendarEvents();
 
-  // Filtrar eventos por data
-  const getEventsForDate = (date: Date) => {
-    return calendarEvents.filter(event => 
-      event.dueDate.toDateString() === date.toDateString()
-    );
+  // Funções de navegação
+  const navigatePrevious = () => {
+    if (viewMode === 'month') {
+      setCurrentDate(subMonths(currentDate, 1));
+    } else if (viewMode === 'week') {
+      setCurrentDate(subWeeks(currentDate, 1));
+    }
   };
 
-  // Verificar se uma data tem eventos
+  const navigateNext = () => {
+    if (viewMode === 'month') {
+      setCurrentDate(addMonths(currentDate, 1));
+    } else if (viewMode === 'week') {
+      setCurrentDate(addWeeks(currentDate, 1));
+    }
+  };
+
+  const navigateToday = () => {
+    setCurrentDate(new Date());
+    setSelectedDate(new Date());
+  };
+
+  // Cálculos de data baseados no modo de visualização
+  const { displayRange, displayTitle } = useMemo(() => {
+    if (viewMode === 'month') {
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+      return {
+        displayRange: { start: monthStart, end: monthEnd },
+        displayTitle: format(currentDate, 'MMMM yyyy', { locale: ptBR })
+      };
+    } else if (viewMode === 'week') {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+      return {
+        displayRange: { start: weekStart, end: weekEnd },
+        displayTitle: `${format(weekStart, 'dd/MM', { locale: ptBR })} - ${format(weekEnd, 'dd/MM/yyyy', { locale: ptBR })}`
+      };
+    }
+    return {
+      displayRange: { start: currentDate, end: currentDate },
+      displayTitle: format(currentDate, 'dd MMMM yyyy', { locale: ptBR })
+    };
+  }, [currentDate, viewMode]);
+
+  // Filtrar eventos por tipo
+  const filteredEvents = useMemo(() => {
+    if (filterType === 'all') return calendarEvents;
+    return calendarEvents.filter(event => event.type === (filterType === 'bills' ? 'bill' : 'income'));
+  }, [calendarEvents, filterType]);
+
+  // Funções auxiliares para o calendário
+  const getEventsForDate = (date: Date) => {
+    return calendarEvents.filter(event => isSameDay(event.dueDate, date));
+  };
+
   const hasEvents = (date: Date) => {
     return getEventsForDate(date).length > 0;
   };
 
-  // Próximos vencimentos (próximos 7 dias)
   const getUpcomingEvents = () => {
     const today = new Date();
-    const weekFromNow = new Date();
-    weekFromNow.setDate(today.getDate() + 7);
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
     
-    return calendarEvents.filter(event => 
-      event.dueDate >= today && event.dueDate <= weekFromNow
-    );
+    return calendarEvents
+      .filter(event => event.dueDate >= today && event.dueDate <= nextWeek)
+      .slice(0, 5);
   };
+
 
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
@@ -142,25 +208,150 @@ export default function CalendarioPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-6 py-8">
+        {/* Header moderno */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">Calendário Financeiro</h1>
-              <p className="text-muted-foreground">
-                Visualize seus vencimentos e recebimentos em formato de calendário
+            <div className="mb-4 lg:mb-0">
+              <h1 className="text-4xl font-bold text-foreground mb-2 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
+                  <CalendarIcon className="w-8 h-8 text-white" />
+                </div>
+                Calendário Financeiro
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Visualize e gerencie seus compromissos financeiros
               </p>
             </div>
             
-            <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)}>
-              <TabsList>
-                <TabsTrigger value="month">Mês</TabsTrigger>
-                <TabsTrigger value="week">Semana</TabsTrigger>
-                <TabsTrigger value="agenda">Agenda</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Botões de filtro */}
+              <Button
+                variant={showFilters ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2"
+                data-testid="button-toggle-filters"
+              >
+                <Filter size={16} />
+                Filtros
+              </Button>
+              
+              {/* Layout toggle */}
+              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border">
+                <Button
+                  variant={layoutMode === 'grid' ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setLayoutMode('grid')}
+                  data-testid="button-grid-view"
+                >
+                  <Grid3X3 size={16} />
+                </Button>
+                <Button
+                  variant={layoutMode === 'list' ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setLayoutMode('list')}
+                  data-testid="button-list-view"
+                >
+                  <List size={16} />
+                </Button>
+              </div>
+              
+              {/* View mode tabs */}
+              <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
+                <TabsList className="grid grid-cols-3">
+                  <TabsTrigger value="month" className="text-sm">Mês</TabsTrigger>
+                  <TabsTrigger value="week" className="text-sm">Semana</TabsTrigger>
+                  <TabsTrigger value="agenda" className="text-sm">Agenda</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
+          
+          {/* Filtros expansíveis */}
+          {showFilters && (
+            <Card className="mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Tipo:</label>
+                    <Tabs value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                      <TabsList className="h-8">
+                        <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
+                        <TabsTrigger value="bills" className="text-xs">Contas</TabsTrigger>
+                        <TabsTrigger value="income" className="text-xs">Receitas</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
+                      {filteredEvents.filter(e => e.type === 'income').length} Receitas
+                    </Badge>
+                    <Badge variant="outline" className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
+                      {filteredEvents.filter(e => e.type === 'bill').length} Contas
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Navegação de datas moderna */}
+          <Card className="mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={navigatePrevious}
+                    className="hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600"
+                    data-testid="button-navigate-previous"
+                  >
+                    <ChevronLeft size={16} />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={navigateToday}
+                    className="px-4 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600"
+                    data-testid="button-navigate-today"
+                  >
+                    Hoje
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={navigateNext}
+                    className="hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600"
+                    data-testid="button-navigate-next"
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
+                
+                <h2 className="text-2xl font-bold text-foreground capitalize">
+                  {displayTitle}
+                </h2>
+                
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4 text-green-600" />
+                    <span>R$ {filteredEvents.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}</span>
+                  </div>
+                  <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+                  <div className="flex items-center gap-1">
+                    <TrendingDown className="w-4 h-4 text-red-600" />
+                    <span>R$ {filteredEvents.filter(e => e.type === 'bill').reduce((sum, e) => sum + e.amount, 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

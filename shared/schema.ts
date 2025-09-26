@@ -78,6 +78,24 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const goals = pgTable("goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  categoryId: varchar("category_id").references(() => categories.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // "savings" (economia), "expense_limit" (limite de gasto), "income_target" (meta de receita)
+  targetAmount: decimal("target_amount", { precision: 10, scale: 2 }).notNull(),
+  currentAmount: decimal("current_amount", { precision: 10, scale: 2 }).default("0"),
+  period: text("period").notNull(), // "monthly", "yearly", "custom"
+  targetDate: date("target_date"), // Para metas com prazo específico
+  isActive: boolean("is_active").default(true),
+  color: text("color").default("#3B82F6"),
+  icon: text("icon").default("fas fa-bullseye"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -153,6 +171,32 @@ export const insertNotificationSchema = createInsertSchema(notifications).pick({
   relatedId: true,
 });
 
+export const insertGoalSchema = createInsertSchema(goals).pick({
+  categoryId: true,
+  name: true,
+  description: true,
+  type: true,
+  targetAmount: true,
+  period: true,
+  targetDate: true,
+  color: true,
+  icon: true,
+});
+
+export const updateGoalSchema = createInsertSchema(goals).pick({
+  categoryId: true,
+  name: true,
+  description: true,
+  type: true,
+  targetAmount: true,
+  currentAmount: true,
+  period: true,
+  targetDate: true,
+  isActive: true,
+  color: true,
+  icon: true,
+}).partial();
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -171,3 +215,6 @@ export type Transaction = typeof transactions.$inferSelect;
 
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+export type InsertGoal = z.infer<typeof insertGoalSchema>;
+export type Goal = typeof goals.$inferSelect;

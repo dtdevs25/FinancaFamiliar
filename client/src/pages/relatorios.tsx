@@ -1,10 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
+import { Plus, Target, TrendingUp, DollarSign, Edit, Trash2, Calendar } from "lucide-react";
+import type { Goal } from "@shared/schema";
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -24,7 +32,22 @@ import {
 
 export default function RelatoriosPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("mes-atual");
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [goalForm, setGoalForm] = useState({
+    name: "",
+    description: "",
+    type: "",
+    targetAmount: "",
+    period: "monthly",
+    targetDate: "",
+    categoryId: "",
+    color: "#3B82F6",
+    icon: "fas fa-bullseye"
+  });
   const userId = "default-user-id";
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: dashboardData } = useQuery({
     queryKey: ["/api/dashboard", userId],
@@ -36,6 +59,75 @@ export default function RelatoriosPage() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/categories", userId],
+  });
+
+  const { data: goals = [] } = useQuery({
+    queryKey: ["/api/goals", userId],
+  });
+
+  const createGoalMutation = useMutation({
+    mutationFn: async (goalData: any) => {
+      return apiRequest("POST", `/api/goals/${userId}`, goalData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      setIsGoalModalOpen(false);
+      resetGoalForm();
+      toast({
+        title: "Meta criada",
+        description: "Sua meta financeira foi criada com sucesso!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao criar meta financeira.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateGoalMutation = useMutation({
+    mutationFn: async ({ goalId, data }: { goalId: string; data: any }) => {
+      return apiRequest("PATCH", `/api/goals/${goalId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      setIsGoalModalOpen(false);
+      setSelectedGoal(null);
+      resetGoalForm();
+      toast({
+        title: "Meta atualizada",
+        description: "Sua meta financeira foi atualizada com sucesso!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar meta financeira.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: string) => {
+      return apiRequest("DELETE", `/api/goals/${goalId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      toast({
+        title: "Meta excluída",
+        description: "Sua meta financeira foi removida com sucesso!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir meta financeira.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Preparar dados para gráficos interativos
@@ -73,6 +165,103 @@ export default function RelatoriosPage() {
   const handleBarClick = (data: any, index: number) => {
     console.log("Clicou no período:", data);
     // Aqui poderia mostrar detalhes do mês específico
+  };
+
+  const resetGoalForm = () => {
+    setGoalForm({
+      name: "",
+      description: "",
+      type: "",
+      targetAmount: "",
+      period: "monthly",
+      targetDate: "",
+      categoryId: "",
+      color: "#3B82F6",
+      icon: "fas fa-bullseye"
+    });
+  };
+
+  const handleCreateGoal = () => {
+    setSelectedGoal(null);
+    resetGoalForm();
+    setIsGoalModalOpen(true);
+  };
+
+  const handleEditGoal = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setGoalForm({
+      name: goal.name,
+      description: goal.description || "",
+      type: goal.type,
+      targetAmount: goal.targetAmount,
+      period: goal.period,
+      targetDate: goal.targetDate || "",
+      categoryId: goal.categoryId || "",
+      color: goal.color,
+      icon: goal.icon
+    });
+    setIsGoalModalOpen(true);
+  };
+
+  const handleGoalSubmit = () => {
+    if (!goalForm.name || !goalForm.type || !goalForm.targetAmount) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const goalData = {
+      ...goalForm,
+      categoryId: goalForm.categoryId || null,
+      targetDate: goalForm.targetDate || null,
+    };
+
+    if (selectedGoal) {
+      updateGoalMutation.mutate({ goalId: selectedGoal.id, data: goalData });
+    } else {
+      createGoalMutation.mutate(goalData);
+    }
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    if (confirm("Tem certeza que deseja excluir esta meta?")) {
+      deleteGoalMutation.mutate(goalId);
+    }
+  };
+
+  const getGoalProgress = (goal: Goal) => {
+    const current = parseFloat(goal.currentAmount);
+    const target = parseFloat(goal.targetAmount);
+    return target > 0 ? (current / target) * 100 : 0;
+  };
+
+  const getGoalIcon = (type: string) => {
+    switch (type) {
+      case "savings":
+        return <Target className="w-5 h-5" />;
+      case "expense_limit":
+        return <TrendingUp className="w-5 h-5" />;
+      case "income_target":
+        return <DollarSign className="w-5 h-5" />;
+      default:
+        return <Target className="w-5 h-5" />;
+    }
+  };
+
+  const getGoalTypeLabel = (type: string) => {
+    switch (type) {
+      case "savings":
+        return "Economia";
+      case "expense_limit":
+        return "Limite de Gasto";
+      case "income_target":
+        return "Meta de Receita";
+      default:
+        return "Outro";
+    }
   };
 
   return (
@@ -325,61 +514,361 @@ export default function RelatoriosPage() {
           </TabsContent>
 
           <TabsContent value="metas" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Metas Financeiras</CardTitle>
-                <CardDescription>Acompanhe o progresso das suas metas de economia</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Meta de Economia */}
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold">Meta de Economia Mensal</h3>
-                      <Badge variant="outline">R$ 1.500,00</Badge>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                      <div 
-                        className="bg-green-600 h-3 rounded-full transition-all duration-300" 
-                        style={{ width: `${Math.min((dashboardData?.monthlyBalance || 0) / 1500 * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>R$ {dashboardData?.monthlyBalance?.toFixed(2) || "0,00"} economizado</span>
-                      <span>{Math.min(((dashboardData?.monthlyBalance || 0) / 1500 * 100), 100).toFixed(1)}%</span>
-                    </div>
-                  </div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-foreground">Metas Financeiras</h3>
+                <p className="text-muted-foreground">Crie e acompanhe suas metas de economia, gastos e receitas</p>
+              </div>
+              <Button onClick={handleCreateGoal} className="flex items-center gap-2" data-testid="button-create-goal">
+                <Plus size={16} />
+                Nova Meta
+              </Button>
+            </div>
 
-                  {/* Meta por Categoria */}
-                  <div className="p-4 rounded-lg border">
-                    <h3 className="font-semibold mb-3">Limite de Gastos por Categoria</h3>
-                    <div className="space-y-3">
-                      {categoryData.slice(0, 3).map((category: any) => (
-                        <div key={category.name}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium">{category.name}</span>
-                            <span className="text-sm text-muted-foreground">
-                              R$ {category.value.toFixed(2)} / R$ 2.000,00
-                            </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {goals.map((goal: Goal) => {
+                const progress = getGoalProgress(goal);
+                const category = categories.find((c: any) => c.id === goal.categoryId);
+                
+                return (
+                  <Card key={goal.id} className="relative overflow-hidden hover:shadow-lg transition-all duration-300" data-testid={`goal-card-${goal.id}`}>
+                    <div 
+                      className="absolute top-0 left-0 right-0 h-1 transition-all duration-300"
+                      style={{ 
+                        background: `linear-gradient(90deg, ${goal.color} ${progress}%, #e5e7eb ${progress}%)`
+                      }}
+                    />
+                    
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
+                            style={{ backgroundColor: goal.color }}
+                          >
+                            {getGoalIcon(goal.type)}
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="h-2 rounded-full" 
-                              style={{ 
-                                width: `${Math.min((category.value / 2000) * 100, 100)}%`,
-                                backgroundColor: category.value > 2000 ? '#EF4444' : category.color
-                              }}
-                            ></div>
+                          <div>
+                            <CardTitle className="text-lg">{goal.name}</CardTitle>
+                            <CardDescription>{getGoalTypeLabel(goal.type)}</CardDescription>
                           </div>
                         </div>
-                      ))}
+                        
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditGoal(goal)}
+                            data-testid={`button-edit-goal-${goal.id}`}
+                          >
+                            <Edit size={14} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteGoal(goal.id)}
+                            data-testid={`button-delete-goal-${goal.id}`}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent>
+                      <div className="space-y-4">
+                        {goal.description && (
+                          <p className="text-sm text-muted-foreground">{goal.description}</p>
+                        )}
+                        
+                        {category && (
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-4 h-4 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <span className="text-sm text-muted-foreground">{category.name}</span>
+                          </div>
+                        )}
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">Progresso</span>
+                            <span className="text-muted-foreground">{progress.toFixed(1)}%</span>
+                          </div>
+                          
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="h-2 rounded-full transition-all duration-500 ease-out"
+                              style={{ 
+                                width: `${Math.min(progress, 100)}%`,
+                                backgroundColor: progress > 100 ? '#EF4444' : goal.color
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>R$ {parseFloat(goal.currentAmount).toFixed(2)}</span>
+                            <span>R$ {parseFloat(goal.targetAmount).toFixed(2)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Calendar size={12} />
+                            <span className="capitalize">{goal.period === 'monthly' ? 'Mensal' : goal.period === 'yearly' ? 'Anual' : 'Personalizado'}</span>
+                          </div>
+                          
+                          <Badge 
+                            variant={goal.isActive ? "default" : "secondary"}
+                            className="text-xs"
+                          >
+                            {goal.isActive ? "Ativa" : "Inativa"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              
+              {goals.length === 0 && (
+                <Card className="md:col-span-2 lg:col-span-3">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full flex items-center justify-center mb-4">
+                      <Target className="w-10 h-10 text-blue-600 dark:text-blue-400" />
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Nenhuma meta criada
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-4 max-w-md">
+                      Crie suas primeira meta financeira para começar a acompanhar seus objetivos de economia, gastos ou receitas.
+                    </p>
+                    <Button onClick={handleCreateGoal} className="flex items-center gap-2">
+                      <Plus size={16} />
+                      Criar Primeira Meta
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
+
+        {/* Modal de Criação/Edição de Meta */}
+        <Dialog open={isGoalModalOpen} onOpenChange={setIsGoalModalOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Target className="text-blue-600" size={20} />
+                {selectedGoal ? "Editar Meta" : "Nova Meta Financeira"}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedGoal 
+                  ? "Modifique as informações da sua meta financeira"
+                  : "Defina uma nova meta para acompanhar seus objetivos financeiros"
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Label htmlFor="goal-name">Nome da Meta *</Label>
+                  <Input
+                    id="goal-name"
+                    type="text"
+                    value={goalForm.name}
+                    onChange={(e) => setGoalForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Ex: Economia para viagem"
+                    data-testid="input-goal-name"
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <Label htmlFor="goal-description">Descrição</Label>
+                  <Textarea
+                    id="goal-description"
+                    value={goalForm.description}
+                    onChange={(e) => setGoalForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Descrição opcional da meta"
+                    data-testid="input-goal-description"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="goal-type">Tipo de Meta *</Label>
+                  <Select 
+                    value={goalForm.type} 
+                    onValueChange={(value) => setGoalForm(prev => ({ ...prev, type: value }))}
+                  >
+                    <SelectTrigger data-testid="select-goal-type">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="savings">Economia</SelectItem>
+                      <SelectItem value="expense_limit">Limite de Gasto</SelectItem>
+                      <SelectItem value="income_target">Meta de Receita</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="goal-amount">Valor Alvo *</Label>
+                  <Input
+                    id="goal-amount"
+                    type="number"
+                    value={goalForm.targetAmount}
+                    onChange={(e) => setGoalForm(prev => ({ ...prev, targetAmount: e.target.value }))}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    data-testid="input-goal-amount"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="goal-period">Período</Label>
+                  <Select 
+                    value={goalForm.period} 
+                    onValueChange={(value) => setGoalForm(prev => ({ ...prev, period: value }))}
+                  >
+                    <SelectTrigger data-testid="select-goal-period">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="yearly">Anual</SelectItem>
+                      <SelectItem value="custom">Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="goal-category">Categoria</Label>
+                  <Select 
+                    value={goalForm.categoryId} 
+                    onValueChange={(value) => setGoalForm(prev => ({ ...prev, categoryId: value }))}
+                  >
+                    <SelectTrigger data-testid="select-goal-category">
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma categoria</SelectItem>
+                      {categories.map((category: any) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {goalForm.period === "custom" && (
+                  <div>
+                    <Label htmlFor="goal-target-date">Data Alvo</Label>
+                    <Input
+                      id="goal-target-date"
+                      type="date"
+                      value={goalForm.targetDate}
+                      onChange={(e) => setGoalForm(prev => ({ ...prev, targetDate: e.target.value }))}
+                      data-testid="input-goal-target-date"
+                    />
+                  </div>
+                )}
+                
+                <div>
+                  <Label htmlFor="goal-color">Cor</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="goal-color"
+                      type="color"
+                      value={goalForm.color}
+                      onChange={(e) => setGoalForm(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-12 h-10 p-1 rounded"
+                      data-testid="input-goal-color"
+                    />
+                    <Input
+                      type="text"
+                      value={goalForm.color}
+                      onChange={(e) => setGoalForm(prev => ({ ...prev, color: e.target.value }))}
+                      placeholder="#3B82F6"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="goal-icon">Ícone</Label>
+                  <Input
+                    id="goal-icon"
+                    type="text"
+                    value={goalForm.icon}
+                    onChange={(e) => setGoalForm(prev => ({ ...prev, icon: e.target.value }))}
+                    placeholder="fas fa-bullseye"
+                    data-testid="input-goal-icon"
+                  />
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
+                    style={{ backgroundColor: goalForm.color }}
+                  >
+                    <i className={`${goalForm.icon} text-sm`}></i>
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      {goalForm.name || "Nome da Meta"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {goalForm.type ? getGoalTypeLabel(goalForm.type) : "Tipo de Meta"}
+                    </p>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <p className="font-bold text-lg">
+                      R$ {goalForm.targetAmount || "0,00"}
+                    </p>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {goalForm.period === 'monthly' ? 'Mensal' : goalForm.period === 'yearly' ? 'Anual' : 'Personalizado'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsGoalModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleGoalSubmit} 
+                disabled={createGoalMutation.isPending || updateGoalMutation.isPending}
+                className="flex items-center gap-2"
+                data-testid="button-save-goal"
+              >
+                {(createGoalMutation.isPending || updateGoalMutation.isPending) ? "Salvando..." : (
+                  <>
+                    <Target size={16} />
+                    {selectedGoal ? "Atualizar Meta" : "Criar Meta"}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -4,7 +4,8 @@ import {
   type Bill, type InsertBill,
   type Income, type InsertIncome,
   type Transaction, type InsertTransaction,
-  type Notification, type InsertNotification
+  type Notification, type InsertNotification,
+  type Goal, type InsertGoal
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -45,6 +46,13 @@ export interface IStorage {
   createNotification(userId: string, notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: string): Promise<boolean>;
   markAllNotificationsAsRead(userId: string): Promise<boolean>;
+
+  // Goals
+  getGoals(userId: string): Promise<Goal[]>;
+  getGoal(id: string): Promise<Goal | undefined>;
+  createGoal(userId: string, goal: InsertGoal): Promise<Goal>;
+  updateGoal(id: string, goal: Partial<Goal>): Promise<Goal | undefined>;
+  deleteGoal(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -54,6 +62,7 @@ export class MemStorage implements IStorage {
   private incomes: Map<string, Income> = new Map();
   private transactions: Map<string, Transaction> = new Map();
   private notifications: Map<string, Notification> = new Map();
+  private goals: Map<string, Goal> = new Map();
 
   constructor() {
     this.initializeDefaultData();
@@ -182,6 +191,62 @@ export class MemStorage implements IStorage {
       }
     ];
     defaultIncomes.forEach(income => this.incomes.set(income.id, income));
+
+    // Create default goals
+    const defaultGoals: Goal[] = [
+      {
+        id: "goal-1",
+        userId: defaultUser.id,
+        categoryId: null,
+        name: "Economia Mensal",
+        description: "Meta de economia para reserva de emergência",
+        type: "savings",
+        targetAmount: "1500.00",
+        currentAmount: "0.00",
+        period: "monthly",
+        targetDate: null,
+        isActive: true,
+        color: "#10B981",
+        icon: "fas fa-piggy-bank",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "goal-2",
+        userId: defaultUser.id,
+        categoryId: "cat-2",
+        name: "Limite Alimentação",
+        description: "Controlar gastos com alimentação",
+        type: "expense_limit",
+        targetAmount: "800.00",
+        currentAmount: "0.00",
+        period: "monthly",
+        targetDate: null,
+        isActive: true,
+        color: "#F59E0B",
+        icon: "fas fa-utensils",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "goal-3",
+        userId: defaultUser.id,
+        categoryId: null,
+        name: "Meta de Renda Extra",
+        description: "Aumentar receita mensal",
+        type: "income_target",
+        targetAmount: "1000.00",
+        currentAmount: "0.00",
+        period: "monthly",
+        targetDate: null,
+        isActive: true,
+        color: "#3B82F6",
+        icon: "fas fa-chart-line",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+    defaultGoals.forEach(goal => this.goals.set(goal.id, goal));
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -404,6 +469,47 @@ export class MemStorage implements IStorage {
     });
     
     return true;
+  }
+
+  async getGoals(userId: string): Promise<Goal[]> {
+    return Array.from(this.goals.values()).filter(goal => goal.userId === userId);
+  }
+
+  async getGoal(id: string): Promise<Goal | undefined> {
+    return this.goals.get(id);
+  }
+
+  async createGoal(userId: string, goal: InsertGoal): Promise<Goal> {
+    const id = randomUUID();
+    const newGoal: Goal = {
+      ...goal,
+      id,
+      userId,
+      categoryId: goal.categoryId ?? null,
+      description: goal.description ?? null,
+      currentAmount: "0.00",
+      targetDate: goal.targetDate ?? null,
+      isActive: true,
+      color: goal.color ?? "#3B82F6",
+      icon: goal.icon ?? "fas fa-bullseye",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.goals.set(id, newGoal);
+    return newGoal;
+  }
+
+  async updateGoal(id: string, goal: Partial<Goal>): Promise<Goal | undefined> {
+    const existing = this.goals.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Goal = { ...existing, ...goal, updatedAt: new Date() };
+    this.goals.set(id, updated);
+    return updated;
+  }
+
+  async deleteGoal(id: string): Promise<boolean> {
+    return this.goals.delete(id);
   }
 }
 

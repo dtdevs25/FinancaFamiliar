@@ -6,7 +6,9 @@ import {
   updateBillSchema,
   insertIncomeSchema, 
   insertNotificationSchema,
-  insertCategorySchema 
+  insertCategorySchema,
+  insertGoalSchema,
+  updateGoalSchema
 } from "@shared/schema";
 import { getAIFinancialAdvice, analyzeBillPatterns, type FinancialData } from "./services/aiAssistant";
 import { sendBillReminderEmail, sendOverdueNotificationEmail } from "./services/emailService";
@@ -363,6 +365,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "Erro ao enviar lembretes" });
+    }
+  });
+
+  // Goals routes
+  app.get("/api/goals/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const goals = await storage.getGoals(userId);
+      res.json(goals);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao carregar metas" });
+    }
+  });
+
+  app.post("/api/goals/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const validatedGoal = insertGoalSchema.parse(req.body);
+      const goal = await storage.createGoal(userId, validatedGoal);
+      res.status(201).json(goal);
+    } catch (error) {
+      res.status(400).json({ message: "Dados inválidos para criação da meta" });
+    }
+  });
+
+  app.patch("/api/goals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = updateGoalSchema.parse(req.body);
+      const goal = await storage.updateGoal(id, validatedData);
+      if (!goal) {
+        return res.status(404).json({ message: "Meta não encontrada" });
+      }
+      res.json(goal);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao atualizar meta" });
+    }
+  });
+
+  app.delete("/api/goals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteGoal(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Meta não encontrada" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao deletar meta" });
     }
   });
 
