@@ -55,17 +55,16 @@ export default function CalendarioPage() {
     queryKey: ["/api/categories", userId],
   });
 
-  // Gerar eventos do calendário
+  // Gerar eventos do calendário baseado na data/período sendo visualizado
   const generateCalendarEvents = (): CalendarEvent[] => {
     const events: CalendarEvent[] = [];
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+    const viewMonth = currentDate.getMonth();
+    const viewYear = currentDate.getFullYear();
 
     // Adicionar contas
     bills.forEach((bill: any) => {
-      const dueDate = new Date(currentYear, currentMonth, bill.dueDay);
-      if (bill.dueDay <= new Date(currentYear, currentMonth + 1, 0).getDate()) {
+      const dueDate = new Date(viewYear, viewMonth, bill.dueDay);
+      if (bill.dueDay <= new Date(viewYear, viewMonth + 1, 0).getDate()) {
         events.push({
           id: bill.id,
           title: bill.name,
@@ -97,7 +96,7 @@ export default function CalendarioPage() {
     return events.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   };
 
-  const calendarEvents = generateCalendarEvents();
+  const calendarEvents = useMemo(() => generateCalendarEvents(), [bills, incomes, categories, currentDate]);
 
   // Funções de navegação
   const navigatePrevious = () => {
@@ -152,7 +151,7 @@ export default function CalendarioPage() {
 
   // Funções auxiliares para o calendário
   const getEventsForDate = (date: Date) => {
-    return calendarEvents.filter(event => isSameDay(event.dueDate, date));
+    return filteredEvents.filter(event => isSameDay(event.dueDate, date));
   };
 
   const hasEvents = (date: Date) => {
@@ -160,12 +159,13 @@ export default function CalendarioPage() {
   };
 
   const getUpcomingEvents = () => {
-    const today = new Date();
-    const nextWeek = new Date();
-    nextWeek.setDate(today.getDate() + 7);
+    const startDate = displayRange.start;
+    const endDate = displayRange.end;
+    const nextWeek = new Date(endDate);
+    nextWeek.setDate(endDate.getDate() + 7);
     
-    return calendarEvents
-      .filter(event => event.dueDate >= today && event.dueDate <= nextWeek)
+    return filteredEvents
+      .filter(event => event.dueDate >= startDate && event.dueDate <= nextWeek)
       .slice(0, 5);
   };
 

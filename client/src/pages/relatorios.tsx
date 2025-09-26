@@ -196,7 +196,7 @@ export default function RelatoriosPage() {
       targetAmount: goal.targetAmount,
       period: goal.period,
       targetDate: goal.targetDate || "",
-      categoryId: goal.categoryId || "",
+      categoryId: goal.categoryId || "none",
       color: goal.color,
       icon: goal.icon
     });
@@ -215,7 +215,7 @@ export default function RelatoriosPage() {
 
     const goalData = {
       ...goalForm,
-      categoryId: goalForm.categoryId || null,
+      categoryId: goalForm.categoryId && goalForm.categoryId !== "none" ? goalForm.categoryId : null,
       targetDate: goalForm.targetDate || null,
     };
 
@@ -755,7 +755,7 @@ export default function RelatoriosPage() {
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma categoria</SelectItem>
+                      <SelectItem value="none">Nenhuma categoria</SelectItem>
                       {categories.map((category: any) => (
                         <SelectItem key={category.id} value={category.id}>
                           <div className="flex items-center gap-2">
