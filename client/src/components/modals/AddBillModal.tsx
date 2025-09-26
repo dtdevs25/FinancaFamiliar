@@ -14,10 +14,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Switch } from "@/components/ui/switch";
 import type { Category } from "@shared/schema";
 import { z } from "zod";
+import CategoryManagementModal from "./CategoryManagementModal";
 
 const addBillSchema = insertBillSchema.extend({
   amount: z.string().min(1, "Valor é obrigatório").regex(/^\d+(\.\d{2})?$/, "Formato inválido (ex: 150.00)"),
-  dueDay: z.string().min(1, "Dia do vencimento é obrigatório").transform(Number),
+  dueDay: z.string().min(1, "Dia do vencimento é obrigatório"),
+  description: z.string().nullable().optional(),
+  categoryId: z.string().nullable().optional(),
+  isRecurring: z.boolean().nullable().optional(),
 });
 
 interface AddBillModalProps {
@@ -30,6 +34,7 @@ interface AddBillModalProps {
 export default function AddBillModal({ isOpen, onClose, categories, userId }: AddBillModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
 
   const form = useForm<z.infer<typeof addBillSchema>>({
     resolver: zodResolver(addBillSchema),
@@ -49,6 +54,9 @@ export default function AddBillModal({ isOpen, onClose, categories, userId }: Ad
         ...data,
         amount: parseFloat(data.amount).toFixed(2),
         dueDay: Number(data.dueDay),
+        description: data.description || null,
+        categoryId: data.categoryId || null,
+        isRecurring: data.isRecurring ?? true,
       });
     },
     onSuccess: () => {
@@ -120,7 +128,8 @@ export default function AddBillModal({ isOpen, onClose, categories, userId }: Ad
                   <FormControl>
                     <Input 
                       placeholder="Ex: CPFL, Vivo, Apartamento" 
-                      {...field} 
+                      {...field}
+                      value={field.value || ""}
                       data-testid="input-bill-description"
                     />
                   </FormControl>
@@ -175,8 +184,20 @@ export default function AddBillModal({ isOpen, onClose, categories, userId }: Ad
               name="categoryId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Categoria</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Categoria</FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsCategoryManagementOpen(true)}
+                      data-testid="button-manage-categories"
+                    >
+                      <i className="fas fa-cog mr-2"></i>
+                      Gerenciar
+                    </Button>
+                  </div>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger data-testid="select-bill-category">
                         <SelectValue placeholder="Selecione uma categoria" />
@@ -211,7 +232,7 @@ export default function AddBillModal({ isOpen, onClose, categories, userId }: Ad
                   </div>
                   <FormControl>
                     <Switch 
-                      checked={field.value} 
+                      checked={field.value || false} 
                       onCheckedChange={field.onChange}
                       data-testid="switch-bill-recurring"
                     />
@@ -250,6 +271,18 @@ export default function AddBillModal({ isOpen, onClose, categories, userId }: Ad
           </form>
         </Form>
       </DialogContent>
+
+      {/* Category Management Modal */}
+      <CategoryManagementModal
+        isOpen={isCategoryManagementOpen}
+        onClose={() => setIsCategoryManagementOpen(false)}
+        userId={userId}
+        onCategoryChange={() => {
+          // Refresh categories in parent component by invalidating queries
+          queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${userId}`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/categories/${userId}`] });
+        }}
+      />
     </Dialog>
   );
 }
