@@ -5,7 +5,8 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { insertCategorySchema, type Category } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,6 +55,7 @@ export default function CategoryManagementModal({ isOpen, onClose, userId, onCat
   const queryClient = useQueryClient();
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${userId}`],
@@ -171,10 +173,10 @@ export default function CategoryManagementModal({ isOpen, onClose, userId, onCat
     onClose();
   };
 
-  const handleDelete = (categoryId: string) => {
-    if (confirm("Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.")) {
-      deleteCategoryMutation.mutate(categoryId);
-    }
+  const handleDelete = () => {
+    if (!deletingCategory) return;
+    deleteCategoryMutation.mutate(deletingCategory.id);
+    setDeletingCategory(null);
   };
 
   return (
@@ -187,6 +189,9 @@ export default function CategoryManagementModal({ isOpen, onClose, userId, onCat
             </div>
             <span>Gerenciar Categorias</span>
           </DialogTitle>
+          <DialogDescription>
+            Crie, edite ou exclua categorias para organizar suas contas financeiras.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -236,7 +241,7 @@ export default function CategoryManagementModal({ isOpen, onClose, userId, onCat
                           </div>
                         </div>
                       </div>
-                      <div className="flex space-x-1">
+                      <div className="flex space-x-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -244,16 +249,19 @@ export default function CategoryManagementModal({ isOpen, onClose, userId, onCat
                           disabled={isCreating}
                           data-testid={`button-edit-category-${category.id}`}
                         >
-                          <i className="fas fa-edit"></i>
+                          <i className="fas fa-edit mr-1"></i>
+                          Editar
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleDelete(category.id)}
+                          onClick={() => setDeletingCategory(category)}
                           disabled={deleteCategoryMutation.isPending}
                           data-testid={`button-delete-category-${category.id}`}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
                         >
-                          <i className="fas fa-trash"></i>
+                          <i className="fas fa-trash mr-1"></i>
+                          Excluir
                         </Button>
                       </div>
                     </div>
@@ -389,6 +397,52 @@ export default function CategoryManagementModal({ isOpen, onClose, userId, onCat
           )}
         </div>
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingCategory} onOpenChange={(open) => !open && setDeletingCategory(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center space-x-2 text-red-600">
+              <i className="fas fa-exclamation-triangle"></i>
+              <span>Confirmar Exclusão</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Tem certeza que deseja excluir a categoria{" "}
+                <strong className="text-foreground">"{deletingCategory?.name}"</strong>?
+              </p>
+              <p className="text-red-600 font-medium">
+                ⚠️ Esta ação não pode ser desfeita!
+              </p>
+              <p className="text-sm text-muted-foreground">
+                A categoria será removida permanentemente do sistema.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingCategory(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              disabled={deleteCategoryMutation.isPending}
+            >
+              {deleteCategoryMutation.isPending ? (
+                <>
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-trash mr-2"></i>
+                  Sim, Excluir
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
