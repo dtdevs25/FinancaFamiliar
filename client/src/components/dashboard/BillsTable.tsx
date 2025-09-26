@@ -21,6 +21,7 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUnpayConfirmModalOpen, setIsUnpayConfirmModalOpen] = useState(false);
   const [editAmount, setEditAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -78,6 +79,38 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
       toast({
         title: "Erro",
         description: "Erro ao marcar conta como paga.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const markAsUnpaidMutation = useMutation({
+    mutationFn: async (billId: string) => {
+      return apiRequest("PATCH", `/api/bills/${billId}`, { 
+        isPaid: false, 
+        paymentDate: null,
+        paymentMethod: null,
+        paymentMethodName: null
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Conta desmarcada como paga",
+        description: "A conta voltou para o status pendente e pode ser editada.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      setIsUnpayConfirmModalOpen(false);
+      // Abrir modal de edição após desmarcar como paga
+      if (selectedBill) {
+        setEditAmount(selectedBill.amount);
+        setIsEditModalOpen(true);
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao desmarcar conta como paga.",
         variant: "destructive",
       });
     },
@@ -145,8 +178,15 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
 
   const handleEditClick = (bill: Bill) => {
     setSelectedBill(bill);
-    setEditAmount(bill.amount);
-    setIsEditModalOpen(true);
+    
+    if (bill.isPaid) {
+      // Se a conta está paga, mostrar modal de confirmação
+      setIsUnpayConfirmModalOpen(true);
+    } else {
+      // Se não está paga, abrir modal de edição normalmente
+      setEditAmount(bill.amount);
+      setIsEditModalOpen(true);
+    }
   };
 
   const handleEditSubmit = () => {
@@ -179,6 +219,12 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
         billId: selectedBill.id,
         paymentData
       });
+    }
+  };
+
+  const handleUnpayConfirm = () => {
+    if (selectedBill) {
+      markAsUnpaidMutation.mutate(selectedBill.id);
     }
   };
 
@@ -452,6 +498,80 @@ export default function BillsTable({ bills, categories, onAddBill }: BillsTableP
                 <>
                   <Edit size={16} />
                   Salvar Alterações
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação para Desmarcar como Pago */}
+      <Dialog open={isUnpayConfirmModalOpen} onOpenChange={setIsUnpayConfirmModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="text-amber-600" size={20} />
+              Conta Paga
+            </DialogTitle>
+            <DialogDescription>
+              A conta "{selectedBill?.name}" está marcada como paga. Para editá-la, é necessário desmarcá-la como paga.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+                  <i className="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 text-sm"></i>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                    Atenção
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Ao confirmar, a conta voltará para o status pendente e você poderá editá-la normalmente.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {selectedBill && (
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Informações da Conta:</p>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Nome:</span>
+                    <span className="font-medium">{selectedBill.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Valor:</span>
+                    <span className="font-medium">{formatCurrency(selectedBill.amount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Status:</span>
+                    <Badge variant="default" className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300">
+                      Pago
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUnpayConfirmModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUnpayConfirm} 
+              disabled={markAsUnpaidMutation.isPending}
+              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+              data-testid="confirm-unpay-button"
+            >
+              {markAsUnpaidMutation.isPending ? "Processando..." : (
+                <>
+                  <Edit size={16} />
+                  Sim, Desmarcar e Editar
                 </>
               )}
             </Button>

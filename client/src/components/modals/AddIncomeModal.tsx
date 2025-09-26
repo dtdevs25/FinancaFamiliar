@@ -20,8 +20,17 @@ import { z } from "zod";
 
 const addIncomeSchema = insertIncomeSchema.extend({
   amount: z.string().min(1, "Valor é obrigatório").regex(/^\d+(\.\d{2})?$/, "Formato inválido (ex: 2500.00)"),
-  receiptDay: z.string().optional().transform((val) => val ? Number(val) : null),
+  receiptDay: z.string().optional(),
   date: z.date().optional().nullable(),
+  customSource: z.string().optional(),
+}).refine((data) => {
+  if (data.source === "Custom" && !data.customSource?.trim()) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Nome da fonte personalizada é obrigatório",
+  path: ["customSource"],
 });
 
 interface AddIncomeModalProps {
@@ -44,20 +53,26 @@ export default function AddIncomeModal({ isOpen, onClose, userId }: AddIncomeMod
       receiptDay: "",
       isRecurring: true,
       date: null,
+      customSource: "",
     },
   });
 
   const isRecurring = form.watch("isRecurring");
   const source = form.watch("source");
+  const customSource = form.watch("customSource");
 
   const createIncomeMutation = useMutation({
     mutationFn: async (data: z.infer<typeof addIncomeSchema>) => {
+      const finalSource = data.source === "Custom" ? data.customSource : data.source;
       const payload = {
         ...data,
+        source: finalSource,
         amount: parseFloat(data.amount).toFixed(2),
         receiptDay: data.receiptDay ? Number(data.receiptDay) : null,
         date: data.date ? format(data.date, "yyyy-MM-dd") : null,
       };
+      // Remove customSource from payload since it's not part of the schema
+      delete payload.customSource;
       return apiRequest("POST", `/api/incomes/${userId}`, payload);
     },
     onSuccess: () => {
@@ -100,6 +115,9 @@ export default function AddIncomeModal({ isOpen, onClose, userId }: AddIncomeMod
     if (source === "Maria") {
       return isRecurring ? "Salário" : "Receita extra";
     }
+    if (source === "Custom") {
+      return isRecurring ? "Receita mensal" : "Receita única";
+    }
     return "PLR, Férias ou outras receitas";
   };
 
@@ -112,7 +130,7 @@ export default function AddIncomeModal({ isOpen, onClose, userId }: AddIncomeMod
   // Update description and receipt day when source changes
   const handleSourceChange = (newSource: string) => {
     form.setValue("source", newSource);
-    form.setValue("description", getDefaultDescription(newSource, isRecurring));
+    form.setValue("description", getDefaultDescription(newSource, isRecurring || false));
     if (isRecurring) {
       form.setValue("receiptDay", getDefaultReceiptDay(newSource));
     }
@@ -174,12 +192,38 @@ export default function AddIncomeModal({ isOpen, onClose, userId }: AddIncomeMod
                           <span>Receita Extra</span>
                         </div>
                       </SelectItem>
+                      <SelectItem value="Custom">
+                        <div className="flex items-center space-x-2">
+                          <i className="fas fa-plus text-green-600"></i>
+                          <span>Nova Fonte de Receita</span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {source === "Custom" && (
+              <FormField
+                control={form.control}
+                name="customSource"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome da Nova Fonte de Receita</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Ex: Freelance, Aluguel, Investimentos" 
+                        {...field} 
+                        data-testid="input-custom-source"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -230,7 +274,7 @@ export default function AddIncomeModal({ isOpen, onClose, userId }: AddIncomeMod
                   </div>
                   <FormControl>
                     <Switch 
-                      checked={field.value} 
+                      checked={field.value || false} 
                       onCheckedChange={handleRecurringChange}
                       data-testid="switch-income-recurring"
                     />
