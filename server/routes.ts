@@ -164,6 +164,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedCategory = insertCategorySchema.partial().parse(req.body);
+      const category = await storage.updateCategory(id, validatedCategory);
+      if (!category) {
+        return res.status(404).json({ message: "Categoria não encontrada" });
+      }
+      res.json(category);
+    } catch (error) {
+      res.status(400).json({ message: "Dados inválidos para atualização da categoria" });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteCategory(id);
+      if (!success) {
+        return res.status(400).json({ message: "Não é possível excluir categoria que está sendo usada por contas existentes" });
+      }
+      res.json({ message: "Categoria excluída com sucesso" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao excluir categoria" });
+    }
+  });
+
   // Notifications routes
   app.get("/api/notifications/:userId", async (req, res) => {
     try {

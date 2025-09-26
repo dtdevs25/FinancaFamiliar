@@ -18,6 +18,8 @@ export interface IStorage {
   getCategories(userId: string): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
   getCategory(id: string): Promise<Category | undefined>;
+  updateCategory(id: string, category: Partial<Category>): Promise<Category | undefined>;
+  deleteCategory(id: string): Promise<boolean>;
 
   // Bills
   getBills(userId: string): Promise<Bill[]>;
@@ -219,6 +221,32 @@ export class MemStorage implements IStorage {
 
   async getCategory(id: string): Promise<Category | undefined> {
     return this.categories.get(id);
+  }
+
+  async updateCategory(id: string, category: Partial<Category>): Promise<Category | undefined> {
+    const existingCategory = this.categories.get(id);
+    if (!existingCategory) {
+      return undefined;
+    }
+    
+    const updatedCategory: Category = {
+      ...existingCategory,
+      ...category,
+      id // Ensure ID cannot be changed
+    };
+    
+    this.categories.set(id, updatedCategory);
+    return updatedCategory;
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    // Check if any bills use this category
+    const billsUsingCategory = Array.from(this.bills.values()).filter(bill => bill.categoryId === id);
+    if (billsUsingCategory.length > 0) {
+      return false; // Cannot delete category that is being used
+    }
+    
+    return this.categories.delete(id);
   }
 
   async getBills(userId: string): Promise<Bill[]> {
