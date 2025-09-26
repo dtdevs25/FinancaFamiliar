@@ -8,7 +8,8 @@ import {
   insertNotificationSchema,
   insertCategorySchema,
   insertGoalSchema,
-  updateGoalSchema
+  updateGoalSchema,
+  insertActivityLogSchema
 } from "@shared/schema";
 import { getAIFinancialAdvice, analyzeBillPatterns, type FinancialData } from "./services/aiAssistant";
 import { sendBillReminderEmail, sendOverdueNotificationEmail } from "./services/emailService";
@@ -90,6 +91,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId } = req.params;
       const validatedBill = insertBillSchema.parse(req.body);
       const bill = await storage.createBill(userId, validatedBill);
+      
+      // Log da atividade
+      await storage.createActivityLog(userId, {
+        action: "create",
+        entityType: "bill",
+        entityId: bill.id,
+        message: `Conta "${bill.name}" foi criada`,
+        metadata: JSON.stringify({ categoryId: bill.categoryId, amount: bill.amount })
+      });
+      
       res.status(201).json(bill);
     } catch (error) {
       res.status(400).json({ message: "Dados inválidos para criação da conta" });
@@ -104,6 +115,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!bill) {
         return res.status(404).json({ message: "Conta não encontrada" });
       }
+      
+      // Log da atividade
+      await storage.createActivityLog(bill.userId, {
+        action: "update",
+        entityType: "bill",
+        entityId: bill.id,
+        message: `Conta "${bill.name}" foi atualizada`,
+        metadata: JSON.stringify({ changes: validatedData })
+      });
+      
       res.json(bill);
     } catch (error) {
       res.status(500).json({ message: "Erro ao atualizar conta" });
@@ -113,10 +134,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/bills/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      // Buscar a conta antes de deletar para pegar os dados
+      const billToDelete = await storage.getBill(id);
       const deleted = await storage.deleteBill(id);
       if (!deleted) {
         return res.status(404).json({ message: "Conta não encontrada" });
       }
+      
+      // Log da atividade
+      if (billToDelete) {
+        await storage.createActivityLog(billToDelete.userId, {
+          action: "delete",
+          entityType: "bill",
+          entityId: id,
+          message: `Conta "${billToDelete.name}" foi excluída`,
+          metadata: JSON.stringify({ amount: billToDelete.amount })
+        });
+      }
+      
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Erro ao deletar conta" });
@@ -139,6 +174,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId } = req.params;
       const validatedIncome = insertIncomeSchema.parse(req.body);
       const income = await storage.createIncome(userId, validatedIncome);
+      
+      // Log da atividade
+      await storage.createActivityLog(userId, {
+        action: "create",
+        entityType: "income",
+        entityId: income.id,
+        message: `Receita "${income.description}" foi criada`,
+        metadata: JSON.stringify({ amount: income.amount, isRecurring: income.isRecurring })
+      });
+      
       res.status(201).json(income);
     } catch (error) {
       res.status(400).json({ message: "Dados inválidos para criação da receita" });
@@ -160,6 +205,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedCategory = insertCategorySchema.parse(req.body);
       const category = await storage.createCategory(validatedCategory);
+      
+      // Log da atividade (usando userId padrão pois a rota não tem userId)
+      await storage.createActivityLog("default-user-id", {
+        action: "create",
+        entityType: "category",
+        entityId: category.id,
+        message: `Categoria "${category.name}" foi criada`,
+        metadata: JSON.stringify({ color: category.color, icon: category.icon })
+      });
+      
       res.status(201).json(category);
     } catch (error) {
       res.status(400).json({ message: "Dados inválidos para criação da categoria" });
@@ -174,6 +229,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!category) {
         return res.status(404).json({ message: "Categoria não encontrada" });
       }
+      
+      // Log da atividade (usando userId padrão)
+      await storage.createActivityLog("default-user-id", {
+        action: "update",
+        entityType: "category",
+        entityId: category.id,
+        message: `Categoria "${category.name}" foi atualizada`,
+        metadata: JSON.stringify({ changes: validatedCategory })
+      });
+      
       res.json(category);
     } catch (error) {
       res.status(400).json({ message: "Dados inválidos para atualização da categoria" });
@@ -183,10 +248,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/categories/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      // Buscar a categoria antes de deletar para pegar os dados
+      const categoryToDelete = await storage.getCategory(id);
       const success = await storage.deleteCategory(id);
       if (!success) {
         return res.status(400).json({ message: "Não é possível excluir categoria que está sendo usada por contas existentes" });
       }
+      
+      // Log da atividade
+      if (categoryToDelete) {
+        await storage.createActivityLog("default-user-id", {
+          action: "delete",
+          entityType: "category",
+          entityId: id,
+          message: `Categoria "${categoryToDelete.name}" foi excluída`,
+          metadata: JSON.stringify({ color: categoryToDelete.color })
+        });
+      }
+      
       res.json({ message: "Categoria excluída com sucesso" });
     } catch (error) {
       res.status(500).json({ message: "Erro ao excluir categoria" });
@@ -368,6 +447,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Activity Logs routes
+  app.get("/api/logs/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { limit } = req.query;
+      const activityLogs = await storage.getActivityLogs(
+        userId,
+        limit ? parseInt(limit as string) : undefined
+      );
+      res.json(activityLogs);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao carregar logs de atividade" });
+    }
+  });
+
+  app.post("/api/logs/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const validatedLog = insertActivityLogSchema.parse(req.body);
+      const activityLog = await storage.createActivityLog(userId, validatedLog);
+      res.status(201).json(activityLog);
+    } catch (error) {
+      res.status(400).json({ message: "Dados inválidos para criação do log" });
+    }
+  });
+
   // Goals routes
   app.get("/api/goals/:userId", async (req, res) => {
     try {
@@ -384,6 +489,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId } = req.params;
       const validatedGoal = insertGoalSchema.parse(req.body);
       const goal = await storage.createGoal(userId, validatedGoal);
+      
+      // Log da atividade
+      await storage.createActivityLog(userId, {
+        action: "create",
+        entityType: "goal",
+        entityId: goal.id,
+        message: `Meta "${goal.name}" foi criada`,
+        metadata: JSON.stringify({ targetAmount: goal.targetAmount, targetDate: goal.targetDate })
+      });
+      
       res.status(201).json(goal);
     } catch (error) {
       res.status(400).json({ message: "Dados inválidos para criação da meta" });
@@ -398,6 +513,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!goal) {
         return res.status(404).json({ message: "Meta não encontrada" });
       }
+      
+      // Log da atividade
+      await storage.createActivityLog(goal.userId, {
+        action: "update",
+        entityType: "goal",
+        entityId: goal.id,
+        message: `Meta "${goal.name}" foi atualizada`,
+        metadata: JSON.stringify({ changes: validatedData })
+      });
+      
       res.json(goal);
     } catch (error) {
       res.status(500).json({ message: "Erro ao atualizar meta" });
@@ -407,10 +532,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/goals/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      // Buscar a meta antes de deletar para pegar os dados
+      const goalToDelete = await storage.getGoal(id);
       const deleted = await storage.deleteGoal(id);
       if (!deleted) {
         return res.status(404).json({ message: "Meta não encontrada" });
       }
+      
+      // Log da atividade
+      if (goalToDelete) {
+        await storage.createActivityLog(goalToDelete.userId, {
+          action: "delete",
+          entityType: "goal",
+          entityId: id,
+          message: `Meta "${goalToDelete.name}" foi excluída`,
+          metadata: JSON.stringify({ targetAmount: goalToDelete.targetAmount })
+        });
+      }
+      
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Erro ao deletar meta" });

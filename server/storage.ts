@@ -5,7 +5,8 @@ import {
   type Income, type InsertIncome,
   type Transaction, type InsertTransaction,
   type Notification, type InsertNotification,
-  type Goal, type InsertGoal
+  type Goal, type InsertGoal,
+  type ActivityLog, type InsertActivityLog
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -53,6 +54,10 @@ export interface IStorage {
   createGoal(userId: string, goal: InsertGoal): Promise<Goal>;
   updateGoal(id: string, goal: Partial<Goal>): Promise<Goal | undefined>;
   deleteGoal(id: string): Promise<boolean>;
+
+  // Activity Logs
+  getActivityLogs(userId: string, limit?: number): Promise<ActivityLog[]>;
+  createActivityLog(userId: string, log: InsertActivityLog): Promise<ActivityLog>;
 }
 
 export class MemStorage implements IStorage {
@@ -63,6 +68,7 @@ export class MemStorage implements IStorage {
   private transactions: Map<string, Transaction> = new Map();
   private notifications: Map<string, Notification> = new Map();
   private goals: Map<string, Goal> = new Map();
+  private activityLogs: Map<string, ActivityLog> = new Map();
 
   constructor() {
     this.initializeDefaultData();
@@ -247,6 +253,72 @@ export class MemStorage implements IStorage {
       }
     ];
     defaultGoals.forEach(goal => this.goals.set(goal.id, goal));
+
+    // Create sample activity logs
+    const now = new Date();
+    const defaultLogs: ActivityLog[] = [
+      {
+        id: randomUUID(),
+        userId: defaultUser.id,
+        action: "create",
+        entityType: "bill",
+        entityId: "bill-1",
+        message: "Conta \"Aluguel\" foi criada",
+        metadata: JSON.stringify({ categoryId: "cat-1", amount: "1800.00" }),
+        createdAt: new Date(now.getTime() - 5 * 60000) // 5 minutes ago
+      },
+      {
+        id: randomUUID(),
+        userId: defaultUser.id,
+        action: "create",
+        entityType: "income",
+        entityId: "income-1",
+        message: "Receita \"Freelance - Design\" foi criada",
+        metadata: JSON.stringify({ amount: "1200.00", isRecurring: false }),
+        createdAt: new Date(now.getTime() - 10 * 60000) // 10 minutes ago
+      },
+      {
+        id: randomUUID(),
+        userId: defaultUser.id,
+        action: "payment",
+        entityType: "bill",
+        entityId: "bill-2",
+        message: "Conta \"Energia Elétrica\" foi marcada como paga",
+        metadata: JSON.stringify({ amount: "180.50", paymentMethod: "PIX" }),
+        createdAt: new Date(now.getTime() - 30 * 60000) // 30 minutes ago
+      },
+      {
+        id: randomUUID(),
+        userId: defaultUser.id,
+        action: "create",
+        entityType: "goal",
+        entityId: "goal-1",
+        message: "Meta \"Economia Mensal\" foi criada",
+        metadata: JSON.stringify({ targetAmount: "1500.00", type: "savings" }),
+        createdAt: new Date(now.getTime() - 2 * 60 * 60000) // 2 hours ago
+      },
+      {
+        id: randomUUID(),
+        userId: defaultUser.id,
+        action: "update",
+        entityType: "bill",
+        entityId: "bill-3",
+        message: "Conta \"Internet\" foi atualizada",
+        metadata: JSON.stringify({ changes: { amount: "89.90" } }),
+        createdAt: new Date(now.getTime() - 3 * 60 * 60000) // 3 hours ago
+      },
+      {
+        id: randomUUID(),
+        userId: defaultUser.id,
+        action: "create",
+        entityType: "category",
+        entityId: "cat-6",
+        message: "Categoria \"Educação\" foi criada",
+        metadata: JSON.stringify({ color: "#9333EA", icon: "fas fa-graduation-cap" }),
+        createdAt: new Date(now.getTime() - 24 * 60 * 60000) // 1 day ago
+      }
+    ];
+    defaultLogs.forEach(log => this.activityLogs.set(log.id, log));
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -510,6 +582,28 @@ export class MemStorage implements IStorage {
 
   async deleteGoal(id: string): Promise<boolean> {
     return this.goals.delete(id);
+  }
+
+  async getActivityLogs(userId: string, limit: number = 50): Promise<ActivityLog[]> {
+    const userLogs = Array.from(this.activityLogs.values())
+      .filter(log => log.userId === userId)
+      .sort((a, b) => b.createdAt!.getTime() - a.createdAt!.getTime())
+      .slice(0, limit);
+    return userLogs;
+  }
+
+  async createActivityLog(userId: string, log: InsertActivityLog): Promise<ActivityLog> {
+    const id = randomUUID();
+    const newLog: ActivityLog = {
+      ...log,
+      id,
+      userId,
+      entityId: log.entityId ?? null,
+      metadata: log.metadata ?? null,
+      createdAt: new Date()
+    };
+    this.activityLogs.set(id, newLog);
+    return newLog;
   }
 }
 

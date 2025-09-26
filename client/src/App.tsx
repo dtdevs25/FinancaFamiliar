@@ -10,6 +10,7 @@ import RelatoriosPage from "@/pages/relatorios";
 import CalendarioPage from "@/pages/calendario";
 import NotificacoesPage from "@/pages/notificacoes";
 import PerfilPage from "@/pages/perfil";
+import LogsPage from "@/pages/logs";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/calendario" component={CalendarioPage} />
         <Route path="/notificacoes" component={NotificacoesPage} />
         <Route path="/perfil" component={PerfilPage} />
+        <Route path="/logs" component={LogsPage} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>

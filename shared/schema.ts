@@ -96,6 +96,17 @@ export const goals = pgTable("goals", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const activityLogs = pgTable("activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  action: text("action").notNull(), // "create", "update", "delete", "payment"
+  entityType: text("entity_type").notNull(), // "bill", "income", "category", "goal"
+  entityId: varchar("entity_id"), // Reference to the affected entity
+  message: text("message").notNull(), // Human-readable description
+  metadata: text("metadata"), // JSON string for additional data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -183,6 +194,14 @@ export const insertGoalSchema = createInsertSchema(goals).pick({
   icon: true,
 });
 
+export const insertActivityLogSchema = createInsertSchema(activityLogs).pick({
+  action: true,
+  entityType: true,
+  entityId: true,
+  message: true,
+  metadata: true,
+});
+
 export const updateGoalSchema = createInsertSchema(goals).pick({
   categoryId: true,
   name: true,
@@ -218,3 +237,6 @@ export type Notification = typeof notifications.$inferSelect;
 
 export type InsertGoal = z.infer<typeof insertGoalSchema>;
 export type Goal = typeof goals.$inferSelect;
+
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type ActivityLog = typeof activityLogs.$inferSelect;

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -15,8 +17,8 @@ import {
   TrendingUp, 
   TrendingDown,
   Filter,
-  Grid3X3,
-  List
+  Search,
+  X
 } from "lucide-react";
 import { format, addWeeks, subWeeks, addMonths, subMonths, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isSameMonth, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -36,58 +38,121 @@ export default function CalendarioPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'month' | 'week' | 'agenda'>('month');
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [showFilters, setShowFilters] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'bills' | 'income'>('all');
-  const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [searchText, setSearchText] = useState('');
   
   const userId = "default-user-id";
 
-  const { data: bills = [] } = useQuery({
+  const { data: bills = [] } = useQuery<any[]>({
     queryKey: ["/api/bills", userId],
   });
 
-  const { data: incomes = [] } = useQuery({
+  const { data: incomes = [] } = useQuery<any[]>({
     queryKey: ["/api/incomes", userId],
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<any[]>({
     queryKey: ["/api/categories", userId],
   });
 
   // Gerar eventos do calendário baseado na data/período sendo visualizado
   const generateCalendarEvents = (): CalendarEvent[] => {
     const events: CalendarEvent[] = [];
-    const viewMonth = currentDate.getMonth();
-    const viewYear = currentDate.getFullYear();
+    
+    // Calcular range de datas para incluir eventos
+    let rangeStart: Date, rangeEnd: Date;
+    if (viewMode === 'week') {
+      rangeStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+      rangeEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+    } else {
+      rangeStart = startOfMonth(currentDate);
+      rangeEnd = endOfMonth(currentDate);
+    }
 
-    // Adicionar contas
+    // Adicionar contas - considerando o range completo
     bills.forEach((bill: any) => {
-      const dueDate = new Date(viewYear, viewMonth, bill.dueDay);
-      if (bill.dueDay <= new Date(viewYear, viewMonth + 1, 0).getDate()) {
-        events.push({
-          id: bill.id,
-          title: bill.name,
-          amount: parseFloat(bill.amount),
-          type: 'bill',
-          dueDate,
-          category: categories.find((cat: any) => cat.id === bill.categoryId),
-          isPaid: bill.isPaid
-        });
+      // Para semanas que cruzam meses, gerar eventos para ambos os meses
+      const startMonth = rangeStart.getMonth();
+      const startYear = rangeStart.getFullYear();
+      const endMonth = rangeEnd.getMonth();
+      const endYear = rangeEnd.getFullYear();
+      
+      // Se está no mesmo mês/ano, ou se cruza mês/ano
+      const monthsToCheck = [];
+      if (startYear === endYear && startMonth === endMonth) {
+        monthsToCheck.push({ month: startMonth, year: startYear });
+      } else {
+        monthsToCheck.push({ month: startMonth, year: startYear });
+        monthsToCheck.push({ month: endMonth, year: endYear });
       }
+      
+      monthsToCheck.forEach(({ month, year }) => {
+        const dueDate = new Date(year, month, bill.dueDay);
+        // Verificar se a data está dentro do range e é válida
+        if (dueDate >= rangeStart && dueDate <= rangeEnd && 
+            bill.dueDay <= new Date(year, month + 1, 0).getDate()) {
+          events.push({
+            id: `${bill.id}-${month}-${year}`,
+            title: bill.name,
+            amount: parseFloat(bill.amount),
+            type: 'bill',
+            dueDate,
+            category: categories.find((cat: any) => cat.id === bill.categoryId),
+            isPaid: bill.isPaid
+          });
+        }
+      });
     });
 
-    // Adicionar receitas
+    // Adicionar receitas recorrentes - considerando o range completo
     incomes.forEach((income: any) => {
-      if (income.receiptDay) {
-        const receiptDate = new Date(viewYear, viewMonth, income.receiptDay);
-        if (income.receiptDay <= new Date(viewYear, viewMonth + 1, 0).getDate()) {
+      if (income.isRecurring && income.receiptDay) {
+        // Para semanas que cruzam meses, gerar eventos para ambos os meses
+        const startMonth = rangeStart.getMonth();
+        const startYear = rangeStart.getFullYear();
+        const endMonth = rangeEnd.getMonth();
+        const endYear = rangeEnd.getFullYear();
+        
+        // Se está no mesmo mês/ano, ou se cruza mês/ano
+        const monthsToCheck = [];
+        if (startYear === endYear && startMonth === endMonth) {
+          monthsToCheck.push({ month: startMonth, year: startYear });
+        } else {
+          monthsToCheck.push({ month: startMonth, year: startYear });
+          monthsToCheck.push({ month: endMonth, year: endYear });
+        }
+        
+        monthsToCheck.forEach(({ month, year }) => {
+          const receiptDate = new Date(year, month, income.receiptDay);
+          // Verificar se a data está dentro do range e é válida
+          if (receiptDate >= rangeStart && receiptDate <= rangeEnd &&
+              income.receiptDay <= new Date(year, month + 1, 0).getDate()) {
+            events.push({
+              id: `${income.id}-${month}-${year}`,
+              title: income.description,
+              amount: parseFloat(income.amount),
+              type: 'income',
+              dueDate: receiptDate
+            });
+          }
+        });
+      }
+      
+      // Adicionar receitas únicas com data específica
+      if (!income.isRecurring && income.date) {
+        const incomeDate = new Date(income.date);
+        // Verificar se a data está dentro do range
+        if (incomeDate >= rangeStart && incomeDate <= rangeEnd) {
           events.push({
-            id: income.id,
+            id: `${income.id}-oneoff`,
             title: income.description,
             amount: parseFloat(income.amount),
             type: 'income',
-            dueDate: receiptDate
+            dueDate: incomeDate
           });
         }
       }
@@ -96,7 +161,7 @@ export default function CalendarioPage() {
     return events.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   };
 
-  const calendarEvents = useMemo(() => generateCalendarEvents(), [bills, incomes, categories, currentDate]);
+  const calendarEvents = useMemo(() => generateCalendarEvents(), [bills, incomes, categories, currentDate, viewMode]);
 
   // Funções de navegação
   const navigatePrevious = () => {
@@ -143,11 +208,37 @@ export default function CalendarioPage() {
     };
   }, [currentDate, viewMode]);
 
-  // Filtrar eventos por tipo
+  // Filtrar eventos por tipo, categoria, status e texto
   const filteredEvents = useMemo(() => {
-    if (filterType === 'all') return calendarEvents;
-    return calendarEvents.filter(event => event.type === (filterType === 'bills' ? 'bill' : 'income'));
-  }, [calendarEvents, filterType]);
+    let events = calendarEvents;
+    
+    // Filtro por tipo
+    if (filterType !== 'all') {
+      events = events.filter(event => event.type === (filterType === 'bills' ? 'bill' : 'income'));
+    }
+    
+    // Filtro por categoria
+    if (filterCategory !== 'all') {
+      events = events.filter(event => event.category?.id === filterCategory);
+    }
+    
+    // Filtro por status (apenas para contas)
+    if (filterStatus !== 'all') {
+      events = events.filter(event => {
+        if (event.type === 'income') return true; // Receitas sempre aparecem
+        return filterStatus === 'paid' ? event.isPaid : !event.isPaid;
+      });
+    }
+    
+    // Filtro por texto
+    if (searchText) {
+      events = events.filter(event => 
+        event.title.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
+    
+    return events;
+  }, [calendarEvents, filterType, filterCategory, filterStatus, searchText]);
 
   // Funções auxiliares para o calendário
   const getEventsForDate = (date: Date) => {
@@ -174,38 +265,6 @@ export default function CalendarioPage() {
     setIsModalOpen(true);
   };
 
-  const EventCard = ({ event }: { event: CalendarEvent }) => (
-    <div 
-      className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-        event.type === 'bill' 
-          ? (event.isPaid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200')
-          : 'bg-blue-50 border-blue-200'
-      }`}
-      onClick={() => handleEventClick(event)}
-      data-testid={`event-card-${event.id}`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${
-            event.type === 'bill' 
-              ? (event.isPaid ? 'bg-green-500' : 'bg-red-500')
-              : 'bg-blue-500'
-          }`}></div>
-          <span className="font-medium text-sm">{event.title}</span>
-        </div>
-        <div className="text-right">
-          <div className={`font-bold text-sm ${
-            event.type === 'bill' ? 'text-red-600' : 'text-blue-600'
-          }`}>
-            R$ {event.amount.toFixed(2)}
-          </div>
-          {event.isPaid && (
-            <Badge variant="outline" className="text-xs">Pago</Badge>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="pb-safe">
@@ -236,32 +295,12 @@ export default function CalendarioPage() {
                 Filtros
               </Button>
               
-              {/* Layout toggle */}
-              <div className="flex items-center gap-1 bg-background rounded-lg p-1 shadow-sm border">
-                <Button
-                  variant={layoutMode === 'grid' ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setLayoutMode('grid')}
-                  data-testid="button-grid-view"
-                >
-                  <Grid3X3 size={16} />
-                </Button>
-                <Button
-                  variant={layoutMode === 'list' ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setLayoutMode('list')}
-                  data-testid="button-list-view"
-                >
-                  <List size={16} />
-                </Button>
-              </div>
               
               {/* View mode tabs */}
               <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="bg-background rounded-lg shadow-sm border">
-                <TabsList className="grid grid-cols-3">
+                <TabsList className="grid grid-cols-2">
                   <TabsTrigger value="month" className="text-sm">Mês</TabsTrigger>
                   <TabsTrigger value="week" className="text-sm">Semana</TabsTrigger>
-                  <TabsTrigger value="agenda" className="text-sm">Agenda</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -271,26 +310,107 @@ export default function CalendarioPage() {
           {showFilters && (
             <Card className="mb-6">
               <CardContent className="p-4">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  {/* Busca por texto */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Buscar:</label>
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Nome da conta..."
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        className="pl-8"
+                        data-testid="input-search"
+                      />
+                      {searchText && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-1 top-1 h-6 w-6 p-0"
+                          onClick={() => setSearchText('')}
+                          data-testid="button-clear-search"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filtro por tipo */}
+                  <div className="space-y-2">
                     <label className="text-sm font-medium">Tipo:</label>
                     <Tabs value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                      <TabsList className="h-8">
+                      <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
                         <TabsTrigger value="bills" className="text-xs">Contas</TabsTrigger>
                         <TabsTrigger value="income" className="text-xs">Receitas</TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </div>
-                  
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+
+                  {/* Filtro por categoria */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Categoria:</label>
+                    <Select value={filterCategory} onValueChange={setFilterCategory}>
+                      <SelectTrigger data-testid="select-category">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as categorias</SelectItem>
+                        {categories.map((category: any) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro por status */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Status:</label>
+                    <Select value={filterStatus} onValueChange={(value: 'all' | 'paid' | 'unpaid') => setFilterStatus(value)}>
+                      <SelectTrigger data-testid="select-status">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
+                        <SelectItem value="unpaid">Pendente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Resumo dos filtros e botão limpar */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                     <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
                       {filteredEvents.filter(e => e.type === 'income').length} Receitas
                     </Badge>
                     <Badge variant="outline" className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
                       {filteredEvents.filter(e => e.type === 'bill').length} Contas
                     </Badge>
+                    <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
+                      {filteredEvents.length} Total
+                    </Badge>
                   </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFilterType('all');
+                      setFilterCategory('all');
+                      setFilterStatus('all');
+                      setSearchText('');
+                    }}
+                    className="text-xs"
+                    data-testid="button-clear-filters"
+                  >
+                    Limpar Filtros
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -355,7 +475,7 @@ export default function CalendarioPage() {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                  {displayTitle}
                 </CardTitle>
                 <CardDescription>
                   Clique em uma data para ver os eventos do dia
@@ -389,111 +509,171 @@ export default function CalendarioPage() {
           </div>
 
           {/* Painel Lateral */}
-          <div className="space-y-6">
-            {/* Eventos do Dia Selecionado */}
-            {selectedDate && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {selectedDate.toLocaleDateString('pt-BR', { 
-                      weekday: 'long', 
-                      day: 'numeric', 
-                      month: 'long' 
-                    })}
-                  </CardTitle>
-                  <CardDescription>
-                    {getEventsForDate(selectedDate).length} evento(s)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {getEventsForDate(selectedDate).map((event) => (
-                      <EventCard key={event.id} event={event} />
+          <div className="space-y-4">
+            {/* Lista Tabular de Eventos do Período */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>Eventos do Período</span>
+                  <Badge variant="outline">{filteredEvents.length} itens</Badge>
+                </CardTitle>
+                <CardDescription>
+                  {selectedDate ? 
+                    `Mostrando eventos para ${selectedDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}` :
+                    `Todos os eventos de ${displayTitle.toLowerCase()}`
+                  }
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-96 overflow-y-auto">
+                  {/* Cabeçalho da tabela */}
+                  <div className="grid grid-cols-12 gap-2 p-3 bg-muted/30 text-xs font-medium text-muted-foreground border-b sticky top-0">
+                    <div className="col-span-1">Dia</div>
+                    <div className="col-span-5">Título</div>
+                    <div className="col-span-3">Valor</div>
+                    <div className="col-span-2">Tipo</div>
+                    <div className="col-span-1">Status</div>
+                  </div>
+                  
+                  {/* Lista de eventos */}
+                  <div className="divide-y">
+                    {(selectedDate ? getEventsForDate(selectedDate) : filteredEvents).map((event, index) => (
+                      <div
+                        key={event.id}
+                        className={`grid grid-cols-12 gap-2 p-3 hover:bg-muted/50 cursor-pointer transition-colors text-sm ${
+                          index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+                        }`}
+                        onClick={() => handleEventClick(event)}
+                        data-testid={`event-row-${event.id}`}
+                      >
+                        <div className="col-span-1 font-medium text-foreground">
+                          {event.dueDate.getDate()}
+                        </div>
+                        <div className="col-span-5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              event.type === 'bill' 
+                                ? (event.isPaid ? 'bg-green-500' : 'bg-red-500')
+                                : 'bg-blue-500'
+                            }`}></div>
+                            <span className="truncate font-medium">{event.title}</span>
+                          </div>
+                          {event.category && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {event.category.name}
+                            </div>
+                          )}
+                        </div>
+                        <div className="col-span-3">
+                          <div className={`font-bold ${
+                            event.type === 'bill' ? 'text-red-600' : 'text-blue-600'
+                          }`}>
+                            R$ {event.amount.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <Badge variant="outline" className={`text-xs ${
+                            event.type === 'bill' ? 'border-red-200 text-red-700 bg-red-50' : 'border-blue-200 text-blue-700 bg-blue-50'
+                          }`}>
+                            {event.type === 'bill' ? 'Conta' : 'Receita'}
+                          </Badge>
+                        </div>
+                        <div className="col-span-1">
+                          {event.type === 'bill' && (
+                            <Badge variant={event.isPaid ? "default" : "secondary"} className="text-xs">
+                              {event.isPaid ? '✓' : '○'}
+                            </Badge>
+                          )}
+                          {event.type === 'income' && (
+                            <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50">
+                              ✓
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     ))}
                     
-                    {getEventsForDate(selectedDate).length === 0 && (
-                      <div className="text-center py-4 text-muted-foreground">
+                    {(selectedDate ? getEventsForDate(selectedDate) : filteredEvents).length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
                         <CalendarIcon className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm">Nenhum evento nesta data</p>
+                        <p className="text-sm">
+                          {selectedDate ? 'Nenhum evento nesta data' : 'Nenhum evento encontrado'}
+                        </p>
+                        {selectedDate && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => setSelectedDate(undefined)}
+                            className="text-xs mt-2"
+                          >
+                            Ver todos os eventos do período
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Próximos Vencimentos */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Próximos 7 Dias</CardTitle>
-                <CardDescription>
-                  Vencimentos e recebimentos próximos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {getUpcomingEvents().map((event) => (
-                    <div key={event.id} 
-                         className="flex items-center justify-between p-2 rounded border-l-4"
-                         style={{ borderLeftColor: event.type === 'bill' ? '#EF4444' : '#3B82F6' }}
-                         onClick={() => handleEventClick(event)}
-                         data-testid={`upcoming-event-${event.id}`}>
-                      <div>
-                        <div className="font-medium text-sm">{event.title}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {event.dueDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
-                        </div>
-                      </div>
-                      <div className={`font-bold text-sm ${
-                        event.type === 'bill' ? 'text-red-600' : 'text-blue-600'
-                      }`}>
-                        R$ {event.amount.toFixed(2)}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {getUpcomingEvents().length === 0 && (
-                    <div className="text-center py-4 text-muted-foreground">
-                      <Clock className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                      <p className="text-sm">Nenhum vencimento próximo</p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Resumo do Mês */}
+            {/* Resumo Financeiro */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Resumo Mensal</CardTitle>
+                <CardTitle className="text-lg">Resumo do Período</CardTitle>
+                <CardDescription>
+                  Totais de {displayTitle.toLowerCase()}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total a Receber</span>
+                  <div className="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-blue-600" />
+                      Total a Receber
+                    </span>
                     <span className="font-bold text-blue-600">
-                      R$ {calendarEvents
+                      R$ {filteredEvents
                         .filter(e => e.type === 'income')
                         .reduce((sum, e) => sum + e.amount, 0)
                         .toFixed(2)}
                     </span>
                   </div>
                   
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total a Pagar</span>
+                  <div className="flex justify-between items-center p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4 text-red-600" />
+                      Total a Pagar
+                    </span>
                     <span className="font-bold text-red-600">
-                      R$ {calendarEvents
+                      R$ {filteredEvents
                         .filter(e => e.type === 'bill')
                         .reduce((sum, e) => sum + e.amount, 0)
                         .toFixed(2)}
                     </span>
                   </div>
                   
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Contas Pagas</span>
-                    <Badge variant="outline">
-                      {calendarEvents.filter(e => e.type === 'bill' && e.isPaid).length} / {calendarEvents.filter(e => e.type === 'bill').length}
+                  <div className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-green-600" />
+                      Contas Pagas
+                    </span>
+                    <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                      {filteredEvents.filter(e => e.type === 'bill' && e.isPaid).length} / {filteredEvents.filter(e => e.type === 'bill').length}
                     </Badge>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Saldo do Período</span>
+                      <span className={`font-bold ${
+                        (filteredEvents.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0) - 
+                         filteredEvents.filter(e => e.type === 'bill').reduce((sum, e) => sum + e.amount, 0)) >= 0 
+                          ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        R$ {(filteredEvents.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0) - 
+                             filteredEvents.filter(e => e.type === 'bill').reduce((sum, e) => sum + e.amount, 0)).toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </CardContent>

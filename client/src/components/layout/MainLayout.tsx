@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   LayoutDashboard,
   FileText,
@@ -42,7 +42,8 @@ import {
   LogOut,
   DollarSign,
   Users,
-  Eye
+  Eye,
+  ScrollText
 } from "lucide-react";
 
 interface MainLayoutProps {
@@ -54,11 +55,30 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const userId = "default-user-id";
 
-  const markNotificationAsRead = async (notificationId: string) => {
-    // TODO: Implement API call to mark notification as read
-    console.log('Marking notification as read:', notificationId);
-    // Invalidate and refetch notifications
-    queryClient.invalidateQueries({ queryKey: ["/api/notifications", userId] });
+  const markNotificationMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      return apiRequest('PATCH', `/api/notifications/${notificationId}/read`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications", userId] });
+    },
+  });
+
+  const markAllNotificationsAsReadMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('PATCH', `/api/notifications/${userId}/read-all`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications", userId] });
+    },
+  });
+
+  const markNotificationAsRead = (notificationId: string) => {
+    markNotificationMutation.mutate(notificationId);
+  };
+
+  const markAllNotificationsAsRead = () => {
+    markAllNotificationsAsReadMutation.mutate();
   };
 
   const { data: notifications } = useQuery({
@@ -92,6 +112,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
       url: "/calendario",
       icon: CalendarDays,
       isActive: location === "/calendario"
+    },
+    {
+      title: "Logs",
+      url: "/logs",
+      icon: ScrollText,
+      isActive: location === "/logs"
     }
   ];
 
@@ -207,11 +233,25 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuLabel>
                   <div className="flex items-center justify-between">
                     <span>Notificações</span>
-                    {unreadCount > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {unreadCount} não lidas
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <>
+                          <Badge variant="secondary" className="text-xs">
+                            {unreadCount} não lidas
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs"
+                            onClick={markAllNotificationsAsRead}
+                            disabled={markAllNotificationsAsReadMutation.isPending}
+                            data-testid="mark-all-read"
+                          >
+                            Marcar todas
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
